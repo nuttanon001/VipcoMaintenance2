@@ -1,0 +1,10 @@
+<div class="master-dialog-vh" *ngIf="itemMainten">
+  <H5 style="color:cadetblue">Maintenance information.</H5>
+  <div class="child-container">
+    <div class="center-content" *ngIf="itemMainten"
+         style="transform:scale(0.9,0.8);transform-origin: top left;">
+      <app-item-mainten-view-dialog [displayValue]="itemMainten">
+      </app-item-mainten-view-dialog>
+    </div>
+  </div>
+</div>
