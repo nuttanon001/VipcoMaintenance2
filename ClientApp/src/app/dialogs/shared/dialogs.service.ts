@@ -165,13 +165,16 @@ export class DialogsService {
  * @param viewContainerRef
  * @param ItemMaintananceId
  */
-  public dialogSelectItemMaintenance(ItemMaintananceId: number, viewContainerRef: ViewContainerRef ): Observable<number> {
+  public dialogSelectItemMaintenance(ItemMaintananceId: number, viewContainerRef: ViewContainerRef,ShowCommand:boolean = false ): Observable<number> {
     let dialogRef: MatDialogRef<ItemMaintenDialogComponent>;
     let config: MatDialogConfig = new MatDialogConfig();
- 
+
     // config
     config.viewContainerRef = viewContainerRef;
-    config.data = ItemMaintananceId;
+    config.data = {
+      ItemMaintananceId: ItemMaintananceId,
+      ShowCommand: ShowCommand
+    };
     // config.height = this.height;
     // config.width= this.width;
     config.hasBackdrop = true;

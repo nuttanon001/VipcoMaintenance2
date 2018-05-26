@@ -82,6 +82,8 @@ export class RequireMaintenMasterComponent
     // insert data
     this.service.addModel(value).subscribe(
       (complete: any) => {
+        //debug here
+        //console.log("Complate", JSON.stringify(complete));
         if (complete && attachs) {
           this.onAttactFileToDataBase(complete.RequireMaintenanceId, attachs, complete.Creator || "");
         }
@@ -121,6 +123,8 @@ export class RequireMaintenMasterComponent
     // update data
     this.service.updateModelWithKey(value).subscribe(
       (complete: any) => {
+        //debug here
+        //console.log("Complate", JSON.stringify(complete));
         if (complete && attachs) {
           this.onAttactFileToDataBase(complete.RequireMaintenanceId, attachs, complete.Modifyer || "Someone");
         }

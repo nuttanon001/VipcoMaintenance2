@@ -23,7 +23,10 @@ export class ItemMaintenDialogComponent implements OnInit {
   /** require-painting-view-dialog ctor */
   constructor(
     private service: ItemMaintenService,
-    @Inject(MAT_DIALOG_DATA) public data : number,
+    @Inject(MAT_DIALOG_DATA) public data: {
+      ItemMaintananceId: number,
+      ShowCommand: boolean
+    },
     private dialogRef: MatDialogRef<number>) { }
 
   // Parameter
@@ -35,7 +38,7 @@ export class ItemMaintenDialogComponent implements OnInit {
     this.canClose = false;
     if (this.data) {
       this.service.getOneKeyNumber({
-        ItemMaintenanceId: this.data,
+        ItemMaintenanceId: this.data.ItemMaintananceId,
         PlanEndDate: new Date,
         PlanStartDate: new Date
       })
@@ -53,8 +56,13 @@ export class ItemMaintenDialogComponent implements OnInit {
       this.onCancelClick();
     }
   }
-  // No Click
+  //On close Click
   onCancelClick(): void {
       this.dialogRef.close();
+  }
+
+  //On select actual information
+  onSelectedValue(command: number): void {
+    this.dialogRef.close(command);
   }
 }

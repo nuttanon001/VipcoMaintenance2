@@ -154,6 +154,8 @@ export abstract class BaseMasterComponent<Model extends BaseModel, Service exten
     // insert data
     this.service.addModel(value).subscribe(
       (complete: any) => {
+        //debug here
+        //console.log("Complate", JSON.stringify(complete));
         if (complete) {
           this.displayValue = complete;
           this.onSaveComplete();
@@ -187,6 +189,8 @@ export abstract class BaseMasterComponent<Model extends BaseModel, Service exten
     // update data
     this.service.updateModelWithKey(value).subscribe(
       (complete: any) => {
+        //debug here
+        //console.log("Complate", JSON.stringify(complete));
         if (complete) {
           this.displayValue = complete;
           this.onSaveComplete();

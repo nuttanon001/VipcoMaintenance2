@@ -383,6 +383,10 @@ namespace VipcoMaintenance.Controllers
 
             if (record.RequireMaintenance != null)
                 record.RequireMaintenance = null;
+            if (record.ItemMainHasEmployees != null)
+                record.ItemMainHasEmployees = null;
+            if (record.RequisitionStockSps != null)
+                record.RequisitionStockSps = null;
 
             return new JsonResult(record, this.DefaultJsonSettings);
         }
@@ -786,6 +790,10 @@ namespace VipcoMaintenance.Controllers
 
             if (record.RequireMaintenance != null)
                 record.RequireMaintenance = null;
+            if (record.ItemMainHasEmployees != null)
+                record.ItemMainHasEmployees = null;
+            if (record.RequisitionStockSps != null)
+                record.RequisitionStockSps = null;
 
             return new JsonResult(record, this.DefaultJsonSettings);
         }

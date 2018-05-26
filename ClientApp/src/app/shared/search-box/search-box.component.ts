@@ -43,7 +43,7 @@ export class SearchBoxComponent implements OnInit {
   ngOnInit(): void {
     if (this.isOnlyCreate) {
       this.onlyCreate2 = this.isOnlyCreate;
-      this.onlyCreate.emit(this.isOnlyCreate);
+      // this.onlyCreate.emit(this.isOnlyCreate);
     }
     // convert the `keyup` event into an observable stream
     Observable.fromEvent(this.el.nativeElement, "keyup")

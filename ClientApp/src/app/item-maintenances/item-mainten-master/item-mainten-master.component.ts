@@ -40,6 +40,7 @@ export class ItemMaintenMasterComponent extends BaseMasterComponent<ItemMaintena
 
   //Parameter
   backToSchedule: boolean = false;
+  noReport: boolean = false;
   loadReportPaint: boolean = false;
 
   @ViewChild(ItemMaintenTableComponent)
@@ -51,7 +52,7 @@ export class ItemMaintenMasterComponent extends BaseMasterComponent<ItemMaintena
 
     this.route.paramMap.subscribe((param: ParamMap) => {
       let key: number = Number(param.get("condition") || 0);
-
+      let itemMaintenanceId: number = Number(param.get("itemmaintenanceid") || 0);
       if (key) {
         // can go back to last page
         this.backToSchedule = true;
@@ -65,6 +66,17 @@ export class ItemMaintenMasterComponent extends BaseMasterComponent<ItemMaintena
         setTimeout(() => {
           this.onDetailEdit(itemMainten);
         }, 500);
+      } else if (itemMaintenanceId) {
+        // can go back to last page
+        this.backToSchedule = true;
+        this.noReport = true;
+        this.service.getOneKeyNumber({
+          ItemMaintenanceId: itemMaintenanceId,
+        }).subscribe(dbData => {
+            setTimeout(() => {
+              this.onDetailEdit(dbData);
+            }, 500);
+          });
       }
     }, error => console.error(error));
   }
@@ -121,8 +133,11 @@ export class ItemMaintenMasterComponent extends BaseMasterComponent<ItemMaintena
         this.canSave = false;
         this.ShowEdit = false;
         if (this.backToSchedule) {
-          this.onReport(this.editValue);
-          //this.location.back();
+          if (this.noReport) {
+            this.location.back();
+          } else {
+            this.onReport(this.editValue);
+          }
         } else {
           this.editValue = undefined;
           this.onDetailView(undefined);

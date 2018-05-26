@@ -121,7 +121,7 @@ namespace VipcoMaintenance.Controllers
                                                        new List<string> { Complate.MailApply },
                                                        BodyMessage, "Notification mail from VIPCO Maintenance SYSTEM.");
                         }
-                        return new JsonResult(Complate, this.DefaultJsonSettings);
+                        return Ok(Complate.RequireNo);
                     }
                 }
             }

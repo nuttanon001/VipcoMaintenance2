@@ -41,7 +41,7 @@ export class RequireMaintenScheduleComponent implements OnInit, OnDestroy {
   // time
   message: number = 0;
   count: number = 0;
-  time: number = 300;
+  time: number = 1800;
   totalRecords: number;
   // value
   status: number | undefined;
@@ -89,7 +89,9 @@ export class RequireMaintenScheduleComponent implements OnInit, OnDestroy {
       Take: [this.schedule.Take],
     });
 
-    this.reportForm.valueChanges.subscribe((data: any) => this.onValueChanged(data));
+    this.reportForm.valueChanges
+      .debounceTime(500)
+      .subscribe((data: any) => this.onValueChanged(data));
     // this.onValueChanged();
   }
 
@@ -106,7 +108,7 @@ export class RequireMaintenScheduleComponent implements OnInit, OnDestroy {
       .subscribe(dbDataSchedule => {
         // console.log("Api Send is", dbDataSchedule);
         // debug here
-        //console.log("JsonData", JSON.stringify(dbDataSchedule));
+        //console.log("JsonData", dbDataSchedule);
 
         this.totalRecords = dbDataSchedule.TotalRow;
         this.columns = new Array;
@@ -192,7 +194,7 @@ export class RequireMaintenScheduleComponent implements OnInit, OnDestroy {
     // imitate db connection over a network
     this.reportForm.patchValue({
       Skip: event.first,
-      Take: (event.rows || 20),
+      Take: (event.rows || 5),
     });
   }
 
@@ -200,8 +202,14 @@ export class RequireMaintenScheduleComponent implements OnInit, OnDestroy {
   onSelectRow(master?: RequireMaintenance): void {
     if (master) {
       if (master.ItemMaintenanceId) {
-        this.serviceDialogs.dialogSelectItemMaintenance(master.ItemMaintenanceId, this.viewContainerRef)
-          .subscribe();
+        this.serviceDialogs.dialogSelectItemMaintenance(master.ItemMaintenanceId, this.viewContainerRef,true)
+          .subscribe(condition => {
+            if (condition) {
+              if (condition === 1) {
+                this.router.navigate(["maintenance/actual-info/", master.ItemMaintenanceId]);
+              }
+            }
+          });
       } else {
         this.serviceDialogs.dialogSelectRequireMaintenance(master.RequireMaintenanceId, this.viewContainerRef)
           .subscribe(conditionNumber => {

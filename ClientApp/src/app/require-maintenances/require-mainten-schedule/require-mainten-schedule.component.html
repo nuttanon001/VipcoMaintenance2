@@ -31,7 +31,7 @@
     </div>
     <div class="bottom-container my-2">
       <p-dataTable [value]="requireMaintenance" sortField="ItemTypeName" rowGroupMode="rowspan"
-                   [lazy]="true" [rows]="10" [paginator]="true" [rowsPerPageOptions]="[5,10,20,50]"
+                   [lazy]="true" [rows]="5" [paginator]="true" [rowsPerPageOptions]="[5,10,20,50]"
                    [totalRecords]="totalRecords" (onLazyLoad)="loadDataLazy($event)"
                    scrollable="true" scrollWidth="94vw">
         <p-column *ngFor="let column of columns" [field]="column.field" [styleClass]="column.styleclass"
@@ -45,7 +45,7 @@
                             'text-danger' : master.RequireStatus === 1}">
                 <i class="fa fa-search" (click)="onSelectRow(master)"
                    style="cursor:pointer;">
-                  <span>{{master.ItemCode}} by {{master.RequireEmpString}} || {{master.RequireStatus}}</span>
+                  <span>{{master.ItemCode}} by {{master.RequireEmpString}} </span>
                 </i>
               </li>
             </ol>

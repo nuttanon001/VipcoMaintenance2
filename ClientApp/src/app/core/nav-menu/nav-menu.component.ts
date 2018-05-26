@@ -142,7 +142,7 @@ export class NavMenuComponent implements OnInit {
   }
   // =============================================\\
   onLogOut(): void {
-    // this.authService.logout();
+    this.authService.logout();
     this.router.navigate(["login"]);
   }
 }

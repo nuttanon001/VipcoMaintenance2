@@ -48,7 +48,7 @@ export class ItemMaintenScheduleComponent implements OnInit, OnDestroy {
   // time
   message: number = 0;
   count: number = 0;
-  time: number = 300;
+  time: number = 1800;
   totalRecords: number;
   // mode
   mode: number | undefined;
@@ -139,7 +139,9 @@ export class ItemMaintenScheduleComponent implements OnInit, OnDestroy {
       CreatorName: [this.schedule.CreatorName],
     });
 
-    this.reportForm.valueChanges.subscribe((data: any) => this.onValueChanged(data));
+    this.reportForm.valueChanges
+      .debounceTime(500)
+      .subscribe((data: any) => this.onValueChanged(data));
     // this.onValueChanged();
   }
 
@@ -192,7 +194,7 @@ export class ItemMaintenScheduleComponent implements OnInit, OnDestroy {
     }
 
     //Debug here Data Schedule
-    // console.log("JsonData", JSON.stringify(dbDataSchedule));
+    //console.log("JsonData", JSON.stringify(dbDataSchedule));
 
     this.totalRecords = dbDataSchedule.TotalRow;
 
@@ -291,7 +293,7 @@ export class ItemMaintenScheduleComponent implements OnInit, OnDestroy {
 
     this.reportForm.patchValue({
       Skip: 0,
-      Take: 10,
+      Take: 5,
     });
 
     // this.onGetTaskMasterSchedule(this.reportForm.value);
@@ -311,7 +313,7 @@ export class ItemMaintenScheduleComponent implements OnInit, OnDestroy {
     this.reportForm.patchValue({
       Skip: event.first,
       // mark Take: ((event.first || 0) + (event.rows || 4)),
-      Take: (event.rows || 10),
+      Take: (event.rows || 5),
     });
   }
 

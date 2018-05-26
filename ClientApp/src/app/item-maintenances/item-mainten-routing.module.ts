@@ -27,6 +27,11 @@ const routes: Routes = [{
       component: ItemMaintenScheduleComponent,
     },
     {
+      path: "actual-info/:itemmaintenanceid",
+      component: ItemMaintenMasterComponent,
+      canActivate: [AuthGuard]
+    },
+    {
       path: "link-mail/:condition",
       component: ItemManitenLinkMailComponent,
     },
