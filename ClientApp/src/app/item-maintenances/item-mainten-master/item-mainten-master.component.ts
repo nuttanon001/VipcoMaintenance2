@@ -70,13 +70,19 @@ export class ItemMaintenMasterComponent extends BaseMasterComponent<ItemMaintena
         // can go back to last page
         this.backToSchedule = true;
         this.noReport = true;
-        this.service.getOneKeyNumber({
+
+        setTimeout(() => {
+          this.onDetailEdit({
           ItemMaintenanceId: itemMaintenanceId,
-        }).subscribe(dbData => {
-            setTimeout(() => {
-              this.onDetailEdit(dbData);
-            }, 500);
-          });
+        })}, 500);
+
+        //this.service.getOneKeyNumber({
+        //  ItemMaintenanceId: itemMaintenanceId,
+        //}).subscribe(dbData => {
+        //    setTimeout(() => {
+        //      this.onDetailEdit(dbData);
+        //    }, 500);
+        //  });
       }
     }, error => console.error(error));
   }

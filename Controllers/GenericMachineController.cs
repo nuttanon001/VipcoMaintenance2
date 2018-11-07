@@ -20,7 +20,7 @@ namespace VipcoMaintenance.Controllers
     [Route("api/[controller]")]
     public abstract class GenericMachineController<Entity> : Controller where Entity : class
     {
-        public IRepositoryMachine<Entity> repository;
+        public IRepositoryMachineMk2<Entity> repository;
         public HelpersClass<Entity> helper;
         public JsonSerializerSettings DefaultJsonSettings =>
             new JsonSerializerSettings()
@@ -30,7 +30,7 @@ namespace VipcoMaintenance.Controllers
                 ReferenceLoopHandling = ReferenceLoopHandling.Ignore
             };
 
-        public GenericMachineController(IRepositoryMachine<Entity> repo)
+        public GenericMachineController(IRepositoryMachineMk2<Entity> repo)
         {
             this.repository = repo;
             this.helper = new HelpersClass<Entity>();

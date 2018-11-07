@@ -60,6 +60,7 @@ export class ItemMaintenScheduleComponent implements OnInit, OnDestroy {
   isLinkMail: boolean = false;
   loadReport: boolean;
   ReportType?: string;
+  onLoading: boolean = false;
   // angular hook
   ngOnInit(): void {
     this.loadReport = false;
@@ -158,6 +159,8 @@ export class ItemMaintenScheduleComponent implements OnInit, OnDestroy {
     if (this.ItemMaintenanceId) {
       schedule.ItemMaintenanceId = this.ItemMaintenanceId;
     }
+    this.onLoading = true;
+    this.itemMaintenances = new Array;
     if (this.mode) {
       if (this.mode > 1) {
           this.service.getItemMaintenanceSchedule(schedule)
@@ -186,10 +189,11 @@ export class ItemMaintenScheduleComponent implements OnInit, OnDestroy {
 
   // on setup datatable
   onSetupDataTable(dbDataSchedule: any): void {
-    if (!dbDataSchedule || dbDataSchedule.length < 1) {
+    if (!dbDataSchedule || !dbDataSchedule.DataTable) {
       this.columns = new Array;
       this.itemMaintenances = new Array;
       this.reloadData();
+      this.onLoading = false;
       return;
     }
 
@@ -264,6 +268,7 @@ export class ItemMaintenScheduleComponent implements OnInit, OnDestroy {
     }
 
     this.itemMaintenances = dbDataSchedule.DataTable.slice();
+    this.onLoading = false;
     this.reloadData();
   }
 
@@ -293,7 +298,7 @@ export class ItemMaintenScheduleComponent implements OnInit, OnDestroy {
 
     this.reportForm.patchValue({
       Skip: 0,
-      Take: 5,
+      Take: 10,
     });
 
     // this.onGetTaskMasterSchedule(this.reportForm.value);
@@ -313,7 +318,7 @@ export class ItemMaintenScheduleComponent implements OnInit, OnDestroy {
     this.reportForm.patchValue({
       Skip: event.first,
       // mark Take: ((event.first || 0) + (event.rows || 4)),
-      Take: (event.rows || 5),
+      Take: (event.rows || 10),
     });
   }
 

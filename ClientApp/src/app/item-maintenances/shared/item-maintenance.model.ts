@@ -8,7 +8,9 @@ export interface ItemMaintenance extends BaseModel {
   PlanStartDate?: Date;
   PlanEndDate?: Date;
   ActualStartDate?: Date;
+  ActualStartDateTime?: string;
   ActualEndDate?: Date;
+  ActualEndDateTime?: string;
   StatusMaintenance?: StatusMaintenance;
   Description?: string;
   Remark?: string;

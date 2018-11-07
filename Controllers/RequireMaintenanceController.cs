@@ -16,6 +16,8 @@ using AutoMapper;
 using System.Dynamic;
 using System.IO;
 using Microsoft.AspNetCore.Hosting;
+using VipcoMaintenance.Helper;
+using System.Globalization;
 
 namespace VipcoMaintenance.Controllers
 {
@@ -24,22 +26,22 @@ namespace VipcoMaintenance.Controllers
     public class RequireMaintenanceController : GenericController<RequireMaintenance>
     {
         // Repository
-        private readonly IRepositoryMachine<ProjectCodeMaster> repositoryProject;
-        private readonly IRepositoryMachine<Employee> repositoryEmployee;
-        private readonly IRepositoryMachine<EmployeeGroupMis> repositoryGroupMis;
-        private readonly IRepositoryMachine<AttachFile> repositoryAttach;
-        private readonly IRepositoryMaintenance<RequireMaintenanceHasAttach> repositoryHasAttach;
+        private readonly IRepositoryMachineMk2<ProjectCodeMaster> repositoryProject;
+        private readonly IRepositoryMachineMk2<Employee> repositoryEmployee;
+        private readonly IRepositoryMachineMk2<EmployeeGroupMis> repositoryGroupMis;
+        private readonly IRepositoryMachineMk2<AttachFile> repositoryAttach;
+        private readonly IRepositoryMaintenanceMk2<RequireMaintenanceHasAttach> repositoryHasAttach;
         // Helper
         private readonly Helper.EmailClass emailClass;
         // IHost
         private readonly IHostingEnvironment hostEnvironment;
 
-        public RequireMaintenanceController(IRepositoryMaintenance<RequireMaintenance> repo,
-            IRepositoryMachine<ProjectCodeMaster> repoPro,
-            IRepositoryMachine<Employee> repoEmp,
-            IRepositoryMachine<EmployeeGroupMis> repoGroupMis,
-            IRepositoryMachine<AttachFile> repoAttach,
-            IRepositoryMaintenance<RequireMaintenanceHasAttach> repoHasAttach,
+        public RequireMaintenanceController(IRepositoryMaintenanceMk2<RequireMaintenance> repo,
+            IRepositoryMachineMk2<ProjectCodeMaster> repoPro,
+            IRepositoryMachineMk2<Employee> repoEmp,
+            IRepositoryMachineMk2<EmployeeGroupMis> repoGroupMis,
+            IRepositoryMachineMk2<AttachFile> repoAttach,
+            IRepositoryMaintenanceMk2<RequireMaintenanceHasAttach> repoHasAttach,
             IMapper mapper,
             IHostingEnvironment hostEnv
             ) : base(repo, mapper) {
@@ -68,17 +70,21 @@ namespace VipcoMaintenance.Controllers
         [HttpGet("GetKeyNumber")]
         public override async Task<IActionResult> Get(int key)
         {
-            var HasItem = await this.repository.GetAsync(key,true);
+            var HasItem = await this.repository.GetFirstOrDefaultAsync(
+                x => x,x => x.RequireMaintenanceId.Equals(key),null,
+                x => x.Include(z => z.Branch).Include(z => z.Item));
             if (HasItem != null)
             {
                 var MapItem = this.mapper.Map<RequireMaintenance, RequireMaintenanceViewModel>(HasItem);
                 if (!string.IsNullOrEmpty(MapItem.RequireEmp))
                     MapItem.RequireEmpString = (await this.repositoryEmployee.GetAsync(MapItem.RequireEmp)).NameThai;
+
                 if (MapItem.ProjectCodeMasterId.HasValue)
                 {
                    var HasProject = await this.repositoryProject.GetAsync(MapItem.ProjectCodeMasterId ?? 0);
                     MapItem.ProjectCodeMasterString = HasProject != null ? $"{HasProject.ProjectCode}/{HasProject.ProjectName}" : "-";
                 }
+
                 if (!string.IsNullOrEmpty(MapItem.GroupMIS))
                     MapItem.GroupMISString = (await this.repositoryGroupMis.GetAsync(MapItem.GroupMIS)).GroupDesc;
 
@@ -92,7 +98,7 @@ namespace VipcoMaintenance.Controllers
         {
             if (key > 0)
             {
-                var HasData = await this.repository.GetAsync(key);
+                var HasData = await this.repository.GetFirstOrDefaultAsync(x => x,x => x.RequireMaintenanceId.Equals(key));
                 if (HasData != null)
                 {
                     HasData.MaintenanceApply = DateTime.Now;
@@ -132,72 +138,77 @@ namespace VipcoMaintenance.Controllers
         [HttpPost("GetScroll")]
         public async Task<IActionResult> GetScroll([FromBody] ScrollViewModel Scroll)
         {
+
             if (Scroll == null)
                 return BadRequest();
-
-            var QueryData = this.repository.GetAllAsQueryable().AsQueryable();
-
-            if (!string.IsNullOrEmpty(Scroll.Where))
-                QueryData = QueryData.Where(x => x.Creator == Scroll.Where);
-
-            if (Scroll.WhereId.HasValue)
-                QueryData = QueryData.Where(x => x.Item.ItemTypeId == Scroll.WhereId);
-
             // Filter
             var filters = string.IsNullOrEmpty(Scroll.Filter) ? new string[] { "" }
-                                : Scroll.Filter.ToLower().Split(null);
+                                : Scroll.Filter.Split(null);
 
-            foreach (var keyword in filters)
+            var predicate = PredicateBuilder.False<RequireMaintenance>();
+
+            foreach (string temp in filters)
             {
-                QueryData = QueryData.Where(x => x.RequireNo.ToLower().Contains(keyword) ||
-                                                 x.Item.Name.ToLower().Contains(keyword) ||
-                                                 x.Item.ItemCode.ToLower().Contains(keyword) ||
-                                                 x.Remark.ToLower().Contains(keyword) ||
-                                                 x.Description.ToLower().Contains(keyword));
+                string keyword = temp;
+                predicate = predicate.Or(x => x.RequireNo.ToLower().Contains(keyword) ||
+                                                x.Item.Name.ToLower().Contains(keyword) ||
+                                                x.Item.ItemCode.ToLower().Contains(keyword) ||
+                                                x.Remark.ToLower().Contains(keyword) ||
+                                                x.Description.ToLower().Contains(keyword));
             }
-
+            if (!string.IsNullOrEmpty(Scroll.Where))
+                predicate = predicate.And(p => p.Creator == Scroll.Where);
+            //Order by
+            Func<IQueryable<RequireMaintenance>, IOrderedQueryable<RequireMaintenance>> order;
             // Order
             switch (Scroll.SortField)
             {
                 case "RequireNo":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.RequireNo);
+                        order = o => o.OrderByDescending(x => x.RequireNo);
                     else
-                        QueryData = QueryData.OrderBy(e => e.RequireNo);
+                        order = o => o.OrderBy(x => x.RequireNo);
                     break;
+
                 case "ItemCode":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.Item.ItemCode);
+                        order = o => o.OrderByDescending(x => x.Item.ItemCode);
                     else
-                        QueryData = QueryData.OrderBy(e => e.Item.ItemCode);
+                        order = o => o.OrderBy(x => x.Item.ItemCode);
                     break;
+
                 case "RequireDate":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.RequireDate);
+                        order = o => o.OrderByDescending(x => x.RequireDate);
                     else
-                        QueryData = QueryData.OrderBy(e => e.RequireDate);
+                        order = o => o.OrderBy(x => x.RequireDate);
                     break;
+
                 default:
-                    QueryData = QueryData.OrderByDescending(e => e.RequireDate);
+                    order = o => o.OrderByDescending(x => x.RequireDate);
                     break;
             }
-            // Get TotalRow
-            Scroll.TotalRow = await QueryData.CountAsync();
-            // Skip Take
-            QueryData = QueryData.Skip(Scroll.Skip ?? 0).Take(Scroll.Take ?? 15);
 
-            var listData = new List<RequireMaintenanceViewModel>();
-            foreach (var item in await QueryData.ToListAsync())
+            var QueryData = await this.repository.GetToListAsync(
+                                    selector: selected => selected,  // Selected
+                                    predicate: predicate, // Where
+                                    orderBy: order, // Order
+                                    include: x => x.Include(z => z.Item).Include(z => z.Branch), // Include
+                                    skip: Scroll.Skip ?? 0, // Skip
+                                    take: Scroll.Take ?? 50); // Take
+
+            // Get TotalRow
+            Scroll.TotalRow = await this.repository.GetLengthWithAsync(predicate: predicate);
+
+            var mapDatas = new List<RequireMaintenanceViewModel>();
+            foreach (var item in QueryData)
             {
                 var MapItem = this.mapper.Map<RequireMaintenance, RequireMaintenanceViewModel>(item);
-                if (MapItem.RequireStatus == RequireStatus.Waiting && MapItem.MaintenanceApply.HasValue)
-                {
-                    MapItem.RequireStatus = RequireStatus.MaintenanceResponse;
-                }
-                listData.Add(MapItem);
+                mapDatas.Add(MapItem);
             }
-            return new JsonResult(new ScrollDataViewModel<RequireMaintenanceViewModel>(Scroll, listData), this.DefaultJsonSettings);
-        }
+
+            return new JsonResult(new ScrollDataViewModel<RequireMaintenanceViewModel>(Scroll, mapDatas), this.DefaultJsonSettings);
+         }
 
         // POST: api/RequireMaintenance/
         [HttpPost]
@@ -208,11 +219,46 @@ namespace VipcoMaintenance.Controllers
                 return BadRequest();
             // +7 Hour
             record = this.helper.AddHourMethod(record);
-            var RunNumber = (await this.repository.GetAllAsQueryable().CountAsync(x => x.RequireDate.Year == record.RequireDate.Year)) + 1;
+            var RunNumber = (await this.repository.GetLengthWithAsync(x => x.RequireDate.Year == record.RequireDate.Year)) + 1;
             record.RequireNo = $"{record.RequireDate.ToString("yy")}-{RunNumber.ToString("0000")}";
             record.CreateDate = DateTime.Now;
 
+            if (!string.IsNullOrEmpty(record.RequireDateTime) && record.RequireDate != null)
+            {
+                if (DateTime.TryParseExact(record.RequireDateTime, "HH:mm", CultureInfo.InvariantCulture,
+                                              DateTimeStyles.None, out DateTime dt))
+                    record.RequireDate = new DateTime(record.RequireDate.Year, record.RequireDate.Month, record.RequireDate.Day,
+                                                    dt.Hour, dt.Minute, 0);
+            }
+
             if (await this.repository.AddAsync(record) == null)
+                return BadRequest();
+            return new JsonResult(record, this.DefaultJsonSettings);
+        }
+        [HttpPut]
+        public override async Task<IActionResult> Update(int key, [FromBody] RequireMaintenance record)
+        {
+            if (key < 1)
+                return BadRequest();
+            if (record == null)
+                return BadRequest();
+
+            // +7 Hour
+            record = this.helper.AddHourMethod(record);
+
+            // Set date for CrateDate Entity
+            if (record.GetType().GetProperty("ModifyDate") != null)
+                record.GetType().GetProperty("ModifyDate").SetValue(record, DateTime.Now);
+
+            if (!string.IsNullOrEmpty(record.RequireDateTime) && record.RequireDate != null)
+            {
+                if (DateTime.TryParseExact(record.RequireDateTime, "HH:mm", CultureInfo.InvariantCulture,
+                                              DateTimeStyles.None, out DateTime dt))
+                    record.RequireDate = new DateTime(record.RequireDate.Year, record.RequireDate.Month, record.RequireDate.Day,
+                                                    dt.Hour, dt.Minute, 0);
+            }
+
+            if (await this.repository.UpdateAsync(record, key) == null)
                 return BadRequest();
             return new JsonResult(record, this.DefaultJsonSettings);
         }
@@ -222,12 +268,12 @@ namespace VipcoMaintenance.Controllers
         public async Task<IActionResult> ScheduleWithRequire([FromBody] OptionItemMaintananceSchedule Schedule)
         {
             var message = "Data not found.";
+
             try
             {
-                var QueryData = this.repository.GetAllAsQueryable()
-                                               .Where(x => x.RequireStatus != RequireStatus.Cancel)
-                                               .AsQueryable();
+                Expression<Func<RequireMaintenance, bool>> expression = x => x.RequireStatus != RequireStatus.Cancel;
                 int TotalRow;
+                Func<IQueryable<RequireMaintenance>, IOrderedQueryable<RequireMaintenance>> order = o => o.OrderBy(x => x.RequireDate);
 
                 if (Schedule != null)
                 {
@@ -238,7 +284,7 @@ namespace VipcoMaintenance.Controllers
                                    : Schedule.Filter.ToLower().Split(null);
                         foreach (var keyword in filters)
                         {
-                            QueryData = QueryData.Where(x => x.Description.ToLower().Contains(keyword) ||
+                            expression = expression.And(x => x.Description.ToLower().Contains(keyword) ||
                                                              x.Remark.ToLower().Contains(keyword) ||
                                                              x.ItemMaintenance.ItemMaintenanceNo.ToLower().Contains(keyword) ||
                                                              x.ItemMaintenance.TypeMaintenance.Name.ToLower().Contains(keyword) ||
@@ -247,39 +293,51 @@ namespace VipcoMaintenance.Controllers
                                                              x.Item.Name.ToLower().Contains(keyword));
                         }
                     }
+
                     // Option Mode
                     if (Schedule.Mode.HasValue)
                     {
                         if (Schedule.Mode == 1)
-                            QueryData = QueryData.OrderByDescending(x => x.RequireDate);
+                            order = o => o.OrderByDescending(x => x.RequireDate);
                         else
-                            QueryData = QueryData.Where(x => x.RequireStatus == RequireStatus.InProcess ||
+                        {
+                            expression = expression.And(x => x.RequireStatus == RequireStatus.InProcess ||
                                                              x.RequireStatus == RequireStatus.Waiting ||
-                                                             x.RequireStatus == RequireStatus.MaintenanceResponse)
-                                                 .OrderBy(x => x.RequireDate);
+                                                             x.RequireStatus == RequireStatus.MaintenanceResponse);
+
+                            order = o => o.OrderBy(x => x.RequireDate);
+                        }
                     }
                     // Option ProjectMasterId
                     if (Schedule.ProjectMasterId.HasValue)
-                        QueryData = QueryData.Where(x => x.ProjectCodeMasterId == Schedule.ProjectMasterId);
+                        expression = expression.And(x => x.ProjectCodeMasterId == Schedule.ProjectMasterId);
                     // Option Create
                     if (!string.IsNullOrEmpty(Schedule.Creator))
-                        QueryData = QueryData.Where(x => x.RequireEmp == Schedule.Creator);
+                        expression = expression.And(x => x.RequireEmp == Schedule.Creator);
                     // Option RequireMaintenance
                     if (Schedule.RequireMaintenanceId.HasValue)
-                        QueryData = QueryData.Where(x => x.RequireMaintenanceId == Schedule.RequireMaintenanceId);
+                        expression = expression.And(x => x.RequireMaintenanceId == Schedule.RequireMaintenanceId);
                     // Option WorkGroupMaintenance
                     if (Schedule.GroupMaintenanceId.HasValue)
-                        QueryData = QueryData.Where(x => x.ItemMaintenance.WorkGroupMaintenanceId == Schedule.GroupMaintenanceId);
-                    
-                    TotalRow = await QueryData.CountAsync();
+                        expression = expression.And(x => x.ItemMaintenance.WorkGroupMaintenanceId == Schedule.GroupMaintenanceId);
+
+                    TotalRow = await this.repository.GetLengthWithAsync(predicate: expression); 
                     // Option Skip and Task
                     // if (Scehdule.Skip.HasValue && Scehdule.Take.HasValue)
-                    QueryData = QueryData.Skip(Schedule.Skip ?? 0).Take(Schedule.Take ?? 20);
+                    // ueryData = QueryData.Skip(Schedule.Skip ?? 0).Take(Schedule.Take ?? 20);
                 }
                 else
-                    TotalRow = await QueryData.CountAsync();
+                    TotalRow = await this.repository.GetLengthWithAsync();
 
-                var GetData = await QueryData.ToListAsync();
+                var GetData = await this.repository.GetToListAsync(
+                                    selector: selected => selected,  // Selected
+                                    predicate: expression, // Where
+                                    orderBy: order, // Order
+                                    include: x => x.Include(z => z.ItemMaintenance.WorkGroupMaintenance)
+                                                   .Include(z => z.Item), // Include
+                                    skip: Schedule.Skip ?? 0, // Skip
+                                    take: Schedule.Take ?? 50); // Take
+
                 if (GetData.Any())
                 {
                     IDictionary<string, int> ColumnGroupTop = new Dictionary<string, int>();
@@ -354,7 +412,7 @@ namespace VipcoMaintenance.Controllers
 
                         // add column time
                         rowData.Add("ProjectMaster", ProjectMaster);
-                        rowData.Add("GroupMaintenance", Data?.ItemMaintenance?.WorkGroupMaintenance?.Name ?? "Not-Assign");
+                        rowData.Add("GroupMaintenance", Data?.ItemMaintenance?.WorkGroupMaintenance?.Description ?? "Not-Assign");
                         rowData.Add("Item", (Data == null ? "Data not been found" : $"{Data.Item.ItemCode}/{Data.Item.Name}"));
                         rowData.Add("Progress", Progress);
                         rowData.Add("ItemMainStatus", Data?.ItemMaintenance != null ? Data.ItemMaintenance.StatusMaintenance : StatusMaintenance.Cancel);
@@ -436,15 +494,15 @@ namespace VipcoMaintenance.Controllers
 
                     return new JsonResult(new
                     {
-                        TotalRow = TotalRow,
+                        TotalRow,
                         ColumnsTop = ColumnGroupTop.Select(x => new
                         {
                             Name = x.Key,
-                            Value = x.Value
+                            x.Value
                         }),
                         ColumnsLow = ColumnGroupBtm.OrderBy(x => x.Key.Date).Select(x => x.Key.Day),
-                        ColumnsAll = ColumnsAll,
-                        DataTable = DataTable
+                        ColumnsAll,
+                        DataTable
                     }, this.DefaultJsonSettings);
                 }
             }
@@ -454,7 +512,6 @@ namespace VipcoMaintenance.Controllers
             }
             return BadRequest(new { Error = message });
         }
-
         // POST: api/RequireMaintenance/MaintenanceWaiting
         [HttpPost("MaintenanceWaiting")]
         public async Task<IActionResult> MaintenanceWaiting([FromBody] OptionRequireMaintenace option)
@@ -462,11 +519,8 @@ namespace VipcoMaintenance.Controllers
             string Message = "";
             try
             {
-                var QueryData = this.repository.GetAllAsQueryable()
-                                               .Where(x => x.RequireStatus != RequireStatus.Cancel)
-                                               .AsQueryable();
+                Expression<Func<RequireMaintenance, bool>> expression = x => x.RequireStatus != RequireStatus.Cancel;
                 int TotalRow;
-
                 if (option != null)
                 {
                     if (!string.IsNullOrEmpty(option.Filter))
@@ -476,7 +530,7 @@ namespace VipcoMaintenance.Controllers
                                             : option.Filter.ToLower().Split(null);
                         foreach (var keyword in filters)
                         {
-                            QueryData = QueryData.Where(x => x.Description.ToLower().Contains(keyword) ||
+                            expression = expression.And(x => x.Description.ToLower().Contains(keyword) ||
                                                              x.Remark.ToLower().Contains(keyword) ||
                                                              x.Item.ItemCode.ToLower().Contains(keyword) ||
                                                              x.Item.Name.ToLower().Contains(keyword));
@@ -485,7 +539,7 @@ namespace VipcoMaintenance.Controllers
 
                     // Option ProjectCodeMaster
                     if (option.ProjectId.HasValue)
-                        QueryData = QueryData.Where(x => x.ProjectCodeMasterId == option.ProjectId);
+                        expression = expression.And(x => x.ProjectCodeMasterId == option.ProjectId);
 
                     // Option Status
                     if (option.Status.HasValue)
@@ -497,23 +551,26 @@ namespace VipcoMaintenance.Controllers
                         //else
                         //    QueryData = QueryData.Where(x => x.RequireStatus != RequireStatus.Cancel);
 
-                        QueryData = QueryData.Where(x => x.RequireStatus != RequireStatus.Cancel && x.RequireStatus != RequireStatus.Complate);
+                        expression = expression.And(
+                            x => x.RequireStatus != RequireStatus.Cancel && 
+                            x.RequireStatus != RequireStatus.Complate);
                     }
                     else
-                        QueryData = QueryData.Where(x => x.RequireStatus == RequireStatus.Waiting);
+                        expression = expression.And(x => x.RequireStatus == RequireStatus.Waiting);
 
-                    TotalRow = await QueryData.CountAsync();
-
-                    // Option Skip and Task
-                    if (option.Skip.HasValue && option.Take.HasValue)
-                        QueryData = QueryData.Skip(option.Skip ?? 0).Take(option.Take ?? 50);
-                    else
-                        QueryData = QueryData.Skip(0).Take(50);
+                    TotalRow = await this.repository.GetLengthWithAsync(expression);
                 }
                 else
-                    TotalRow = await QueryData.CountAsync();
+                    TotalRow = await this.repository.GetLengthWithAsync();
 
-                var GetData = await QueryData.ToListAsync();
+                var GetData = await this.repository.GetToListAsync(
+                                    selector: selected => selected,  // Selected
+                                    predicate: expression, // Where
+                                    orderBy: null, // Order
+                                    include: x => x.Include(z => z.ItemMaintenance).Include(z => z.Item.ItemType), // Include
+                                    skip: option.Skip ?? 0, // Skip
+                                    take: option.Take ?? 50); // Take
+
                 if (GetData.Any())
                 {
                     List<string> Columns = new List<string>();
@@ -532,13 +589,13 @@ namespace VipcoMaintenance.Controllers
                             Columns.Add(day.Date.ToString("dd/MM/yy"));
                     }
 
-                    var DataTable = new List<IDictionary<String, Object>>();
+                    var DataTable = new List<IDictionary<string, object>>();
 
                     foreach (var Data in GetData.OrderBy(x => x.Item.ItemType.Name))
                     {
                         var ItemTypeName = $"{Data.Item.ItemType.Name ?? "No-Data"}";
 
-                        IDictionary<String, Object> rowData;
+                        IDictionary<string, object> rowData;
                         bool update = false;
                         if (DataTable.Any(x => (string)x["ItemTypeName"] == ItemTypeName))
                         {
@@ -613,15 +670,11 @@ namespace VipcoMaintenance.Controllers
         [HttpGet("GetAttach")]
         public async Task<IActionResult> GetAttach(int key)
         {
-            var AttachIds = await this.repositoryHasAttach.GetAllAsQueryable()
-                                  .Where(x => x.RequireMaintenanceId == key)
-                                  .Select(x => x.AttachFileId).ToListAsync();
+            var AttachIds = await this.repositoryHasAttach.GetToListAsync(
+                x => x.AttachFileId, x => x.RequireMaintenanceId == key);
             if (AttachIds != null)
             {
-                var DataAttach = await this.repositoryAttach.GetAllAsQueryable()
-                                       .Where(x => AttachIds.Contains(x.AttachFileId))
-                                       .ToListAsync();
-
+                var DataAttach = await this.repositoryAttach.GetToListAsync(x => x, x => AttachIds.Contains(x.AttachFileId));
                 return new JsonResult(DataAttach, this.DefaultJsonSettings);
             }
 
@@ -697,8 +750,9 @@ namespace VipcoMaintenance.Controllers
                     if (delFile.Exists)
                         delFile.Delete();
                     // Condition
-                    Expression<Func<RequireMaintenanceHasAttach, bool>> condition = c => c.AttachFileId == AttachFile.AttachFileId;
-                    var RequireMaitenanceHasAttach = this.repositoryHasAttach.FindAsync(condition).Result;
+                    var RequireMaitenanceHasAttach = await this.repositoryHasAttach.GetFirstOrDefaultAsync(
+                        x => x,x => x.AttachFileId == AttachFile.AttachFileId);
+
                     if (RequireMaitenanceHasAttach != null)
                         this.repositoryHasAttach.Delete(RequireMaitenanceHasAttach.RequireMaintenanceHasAttachId);
                     // remove attach

@@ -8,16 +8,12 @@ import { ItemMaintenScheduleComponent } from './item-mainten-schedule/item-maint
 import { ItemManitenLinkMailComponent } from './item-maniten-link-mail/item-maniten-link-mail.component';
 // Services
 import { AuthGuard } from '../core/auth/auth-guard.service';
+import { ItemMaintenHistoryComponent } from './item-mainten-history/item-mainten-history.component';
 
 const routes: Routes = [{
   path: "",
   component: ItemMaintenCenterComponent,
   children: [
-    {
-      path: ":condition",
-      component: ItemMaintenMasterComponent,
-      canActivate: [AuthGuard]
-    },
     {
       path: "schedule",
       component: ItemMaintenScheduleComponent,
@@ -34,6 +30,15 @@ const routes: Routes = [{
     {
       path: "link-mail/:condition",
       component: ItemManitenLinkMailComponent,
+    },
+    {
+      path: "history1",
+      component: ItemMaintenHistoryComponent,
+    },
+    {
+      path: ":condition",
+      component: ItemMaintenMasterComponent,
+      canActivate: [AuthGuard]
     },
     {
       path: "",

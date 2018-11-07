@@ -19,7 +19,7 @@ namespace VipcoMaintenance.Controllers
     [Route("api/[controller]")]
     public class MovementStockSpController : GenericController<MovementStockSp>
     {
-        public MovementStockSpController(IRepositoryMaintenance<MovementStockSp> repo,
+        public MovementStockSpController(IRepositoryMaintenanceMk2<MovementStockSp> repo,
             IMapper mapper):base(repo, mapper) { }
       
     }

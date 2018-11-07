@@ -18,7 +18,7 @@ export class UserService extends BaseRestService<User> {
   ) {
     super(
       http,
-      "api/User/",
+      "http://192.168.2.31/machinemk2/api/User/",
       "UserService",
       "UserId",
       httpErrorHandler

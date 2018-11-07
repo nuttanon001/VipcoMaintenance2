@@ -70,6 +70,7 @@ export abstract class BaseRestService<Model>{
   }
   /** get one with key number */
   getOneKeyNumber(value: Model): Observable<Model> {
+    // console.log(value);
     // Add safe, URL encoded search parameter if there is a search term
     const options = value ? { params: new HttpParams().set("key", value[this.keyName].toString()) } : {};
     return this.http.get<Model>(this.baseUrl + "GetKeyNumber/", options)
@@ -181,4 +182,34 @@ export abstract class BaseRestService<Model>{
           error => this.logError(filename, error)
       ));
   }
+
+  downloadFile(blob: any, type: string, filename: string): string {
+    const url = window.URL.createObjectURL(blob); // <-- work with blob directly
+
+    // create hidden dom element (so it works in all browsers)
+    const a = document.createElement('a');
+    a.setAttribute('style', 'display:none;');
+    document.body.appendChild(a);
+
+    // create file, attach to hidden element and open hidden element
+    a.href = url;
+    a.download = filename;
+    a.click();
+    return url;
+  }
+}
+
+export function funcDownloadFile(blob: any, type: string, filename: string): string {
+  const url = window.URL.createObjectURL(blob); // <-- work with blob directly
+
+  // create hidden dom element (so it works in all browsers)
+  const a = document.createElement('a');
+  a.setAttribute('style', 'display:none;');
+  document.body.appendChild(a);
+
+  // create file, attach to hidden element and open hidden element
+  a.href = url;
+  a.download = filename;
+  a.click();
+  return url;
 }

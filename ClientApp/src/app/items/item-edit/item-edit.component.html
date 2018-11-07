@@ -109,6 +109,26 @@
           <div class="row-form">
             <div class="left-content">
               <mat-form-field>
+                <input matInput [matDatepicker]="RegisterDate" placeholder="RegisterDate"
+                       id="RegisterDate" formControlName="RegisterDate">
+                <mat-datepicker-toggle matSuffix [for]="RegisterDate"></mat-datepicker-toggle>
+                <mat-datepicker #RegisterDate readonly></mat-datepicker>
+              </mat-form-field>
+            </div>
+
+            <div class="right-content">
+              <mat-form-field>
+                <input matInput [matDatepicker]="CancelDate" placeholder="CancelDate"
+                       id="CancelDate" formControlName="CancelDate">
+                <mat-datepicker-toggle matSuffix [for]="CancelDate"></mat-datepicker-toggle>
+                <mat-datepicker #CancelDate readonly></mat-datepicker>
+              </mat-form-field>
+            </div>
+          </div>
+
+          <div class="row-form">
+            <div class="left-content">
+              <mat-form-field>
                 <input matInput placeholder="Property/1"
                        maxlength="200"
                        id="Property" formControlName="Property">

@@ -1,10 +1,10 @@
+@import "../../../sass/styles.scss";
 /* Structure */
 .master-container {
-    display: flex;
-    flex-direction: column;
-    width: calc(100vw - 50px);
-    height: -webkit-calc(100vh - 80px); /* google, safari */
-    height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  height: $master-vh;
+  width: $master-vw;
 }
 
 .master-dialog {
@@ -15,10 +15,10 @@
 }
 
 .master-dialog-vh {
-    display: flex;
-    flex-direction: column;
-    width: 70vw;
-    height: 70vh;
+  display: flex;
+  flex-direction: column;
+  width: $dialog-vw;
+  height: $dialog-vh;
 }
 
 .child-left-container {

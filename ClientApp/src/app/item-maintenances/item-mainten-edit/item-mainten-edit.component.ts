@@ -19,6 +19,7 @@ import { ItemMaintenService, ItemMaintenCommunicateService } from "../shared/ite
 import { WorkGroupMaintenService } from "../../work-group-maintenances/shared/work-group-mainten.service";
 import { ItemMaintenHasEmpService } from "../shared/item-mainten-has-emp.service";
 import { ItemMaintenanceHasEmp } from "../shared/item-maintenance-has-emp.model";
+import { debounceTime, distinctUntilChanged } from "rxjs/operators";
 
 @Component({
   selector: 'app-item-mainten-edit',
@@ -193,7 +194,9 @@ export class ItemMaintenEditComponent extends BaseEditComponent<ItemMaintenance,
         ]
       ],
       ActualStartDate: [this.editValue.ActualStartDate],
+      ActualStartDateTime: [this.editValue.ActualStartDateTime],
       ActualEndDate: [this.editValue.ActualEndDate],
+      ActualEndDateTime: [this.editValue.ActualEndDateTime],
       StatusMaintenance: [this.editValue.StatusMaintenance],
       Description: [this.editValue.Description,
         [
@@ -232,6 +235,48 @@ export class ItemMaintenEditComponent extends BaseEditComponent<ItemMaintenance,
       StatusMaintenanceString: [this.editValue.StatusMaintenanceString],
     });
     this.editValueForm.valueChanges.subscribe((data: any) => this.onValueChanged(data));
+
+    const controlAS: AbstractControl | null = this.editValueForm.get("ActualStartDate");
+    if (controlAS) {
+      controlAS.valueChanges
+        .pipe(
+          debounceTime(500),
+          distinctUntilChanged()).subscribe((data: any) => {
+            const controlASTime: AbstractControl = this.editValueForm.get("ActualStartDateTime");
+            if (controlASTime) {
+              controlASTime.setValidators(data ? Validators.required : Validators.nullValidator);
+              controlASTime.updateValueAndValidity();
+
+              if (this.editValueForm) {
+                Object.keys(this.editValueForm.controls).forEach(field => {
+                  const control = this.editValueForm.get(field);
+                  control.markAsTouched({ onlySelf: true });
+                });
+              }
+            }
+          });
+    }
+
+    const controlAE: AbstractControl | null = this.editValueForm.get("ActualEndDate");
+    if (controlAE) {
+      controlAE.valueChanges
+        .pipe(
+          debounceTime(500),
+          distinctUntilChanged()).subscribe((data: any) => {
+            const controlAETime: AbstractControl = this.editValueForm.get("ActualEndDateTime");
+            if (controlAETime) {
+              controlAETime.setValidators(data ? Validators.required : Validators.nullValidator);
+              controlAETime.updateValueAndValidity();
+
+              if (this.editValueForm) {
+                Object.keys(this.editValueForm.controls).forEach(field => {
+                  const control = this.editValueForm.get(field);
+                  control.markAsTouched({ onlySelf: true });
+                });
+              }
+            }
+          });
+    }
   }
 
   //============= OverRide ===============//
@@ -245,7 +290,8 @@ export class ItemMaintenEditComponent extends BaseEditComponent<ItemMaintenance,
 
     if (controlAS && controlAE) {
       // console.log("Control1");
-      if (controlAS.value && controlAE.value) {
+      if (controlAS.value && controlAE.value)
+      {
         // console.log("Control2");
         if (controlAS.value > controlAE.value) {
           this.editValueForm.patchValue({
@@ -256,7 +302,9 @@ export class ItemMaintenEditComponent extends BaseEditComponent<ItemMaintenance,
             ActualEndDate: controlAS.value
           });
         }
-      } else {
+      }
+      else
+      {
         if (!controlAS.value) {
           if (controlAE.value) {
             // debug here

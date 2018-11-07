@@ -12,6 +12,7 @@ using VipcoMaintenance.Services;
 using VipcoMaintenance.ViewModels;
 using VipcoMaintenance.Models.Maintenances;
 using AutoMapper;
+using VipcoMaintenance.Helper;
 
 namespace VipcoMaintenance.Controllers
 {
@@ -19,7 +20,7 @@ namespace VipcoMaintenance.Controllers
     [Route("api/[controller]")]
     public class WorkGroupController : GenericController<WorkGroup>
     {
-        public WorkGroupController(IRepositoryMaintenance<WorkGroup> repo,
+        public WorkGroupController(IRepositoryMaintenanceMk2<WorkGroup> repo,
             IMapper mapper) : base(repo,mapper) { }
 
         // POST: api/WorkGroup/GetScroll
@@ -28,48 +29,58 @@ namespace VipcoMaintenance.Controllers
         {
             if (Scroll == null)
                 return BadRequest();
-
-            var QueryData = this.repository.GetAllAsQueryable().AsQueryable();
-
             // Filter
             var filters = string.IsNullOrEmpty(Scroll.Filter) ? new string[] { "" }
-                                : Scroll.Filter.ToLower().Split(null);
+                                : Scroll.Filter.Split(null);
 
-            foreach (var keyword in filters)
+            var predicate = PredicateBuilder.False<WorkGroup>();
+
+            foreach (string temp in filters)
             {
-                QueryData = QueryData.Where(x => x.Name.ToLower().Contains(keyword) ||
-                                                 x.Description.ToLower().Contains(keyword) || 
-                                                 x.Remark.ToLower().Contains(keyword));
+                string keyword = temp;
+                predicate = predicate.Or(x => x.Name.ToLower().Contains(keyword) ||
+                                              x.Description.ToLower().Contains(keyword) ||
+                                              x.Remark.ToLower().Contains(keyword));
             }
-
+            if (!string.IsNullOrEmpty(Scroll.Where))
+                predicate = predicate.And(p => p.Creator == Scroll.Where);
+            //Order by
+            Func<IQueryable<WorkGroup>, IOrderedQueryable<WorkGroup>> order;
             // Order
             switch (Scroll.SortField)
             {
                 case "Name":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.Name);
+                        order = o => o.OrderByDescending(x => x.Name);
                     else
-                        QueryData = QueryData.OrderBy(e => e.Name);
+                        order = o => o.OrderBy(x => x.Name);
                     break;
+
                 case "Description":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.Description);
+                        order = o => o.OrderByDescending(x => x.Description);
                     else
-                        QueryData = QueryData.OrderBy(e => e.Description);
+                        order = o => o.OrderBy(x => x.Description);
                     break;
+
                 default:
-                    QueryData = QueryData.OrderByDescending(e => e.Name);
+                    order = o => o.OrderByDescending(x => x.Name);
                     break;
             }
-            // Get TotalRow
-            Scroll.TotalRow = await QueryData.CountAsync();
-            // Skip Take
-            QueryData = QueryData.Skip(Scroll.Skip ?? 0).Take(Scroll.Take ?? 50);
-            var ListMapData = new List<WorkGroupViewModel>();
-            foreach (var item in await QueryData.ToListAsync())
-                ListMapData.Add(this.mapper.Map<WorkGroup, WorkGroupViewModel>(item));
 
-            return new JsonResult(new ScrollDataViewModel<WorkGroupViewModel>(Scroll, ListMapData), this.DefaultJsonSettings);
+            var QueryData = await this.repository.GetToListAsync(
+                                    selector: selected => selected,  // Selected
+                                    predicate: predicate, // Where
+                                    orderBy: order, // Order
+                                    include: null, // Include
+                                    skip: Scroll.Skip ?? 0, // Skip
+                                    take: Scroll.Take ?? 50); // Take
+
+            // Get TotalRow
+            Scroll.TotalRow = await this.repository.GetLengthWithAsync(predicate: predicate);
+
+            return new JsonResult(new ScrollDataViewModel<WorkGroup>(Scroll, QueryData), this.DefaultJsonSettings);
+          
         }
     }
 }

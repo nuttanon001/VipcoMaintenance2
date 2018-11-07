@@ -21,9 +21,9 @@ namespace VipcoMaintenance.Controllers
     [Route("api/[controller]")]
     public class ItemMainHasEmployeeController : GenericController<ItemMainHasEmployee>
     {
-        private readonly IRepositoryMachine<Employee> repositoryEmployee;
-        public ItemMainHasEmployeeController(IRepositoryMaintenance<ItemMainHasEmployee> repo,
-            IRepositoryMachine<Employee> repoEmp,
+        private readonly IRepositoryMachineMk2<Employee> repositoryEmployee;
+        public ItemMainHasEmployeeController(IRepositoryMaintenanceMk2<ItemMainHasEmployee> repo,
+            IRepositoryMachineMk2<Employee> repoEmp,
             IMapper mapper) :base(repo, mapper)
         {
             this.repositoryEmployee = repoEmp;
@@ -33,9 +33,9 @@ namespace VipcoMaintenance.Controllers
         [HttpGet("GetItemMainHasEmpByItemMainten")]
         public override async Task<IActionResult> Get(int key)
         {
-            var HasItem = await this.repository.GetAllAsQueryable()
-                                    .Where(x => x.ItemMaintenanceId == key)
-                                    .ToListAsync();
+            var HasItem = await this.repository.GetToListAsync(
+                x => x, x => x.ItemMaintenanceId == key);
+
             if (HasItem != null)
             {
                 var ListItem = new List<ItemMainHasEmployeeViewModel>();
@@ -57,10 +57,7 @@ namespace VipcoMaintenance.Controllers
             if (Items == null)
                 return BadRequest();
 
-            var dbDatas = await this.repository
-                                    .GetAllAsQueryable()
-                                    .Where(x => x.ItemMaintenanceId == key)
-                                    .ToListAsync();
+            var dbDatas = await this.repository.GetToListAsync(x => x, x => x.ItemMaintenanceId == key);
             //Removes DataBase
             foreach(var dbData in dbDatas)
             {

@@ -66,7 +66,17 @@ export class RequireMaintenMasterComponent
         this.dialogsService.error("Access Deny", "คำขอซ่อมบำรุง อยู่ขณะดำเนินการไม่สามารถแก้ไขได้ !!!", this.viewContainerRef);
         return;
       }
+
+      if (this.authService.getAuth) {
+        if (this.authService.getAuth.LevelUser < 2) {
+          if (this.authService.getAuth.UserName !== editValue.Creator) {
+            this.dialogsService.error("Access Denied", "You don't have permission to access.", this.viewContainerRef);
+            return;
+          }
+        }
+      }
     }
+	
     super.onDetailEdit(editValue);
   }
 

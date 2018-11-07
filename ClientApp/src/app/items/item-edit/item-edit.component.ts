@@ -104,10 +104,12 @@ export class ItemEditComponent extends BaseEditComponent<Item, ItemService> {
       ]
       ],
       Brand: [this.editValue.Brand,
-      [
-        Validators.maxLength(200),
-      ]
+        [
+          Validators.maxLength(200),
+        ]
       ],
+      RegisterDate: [this.editValue.RegisterDate,],
+      CancelDate: [this.editValue.CancelDate],
       Property: [this.editValue.Property,
       [
         Validators.maxLength(200),

@@ -12,6 +12,8 @@ import { Observable } from "rxjs/Observable";
 import { catchError } from "rxjs/operators";
 import { OptionItemMaintenSchedule } from "./option-item-mainten-schedule.model";
 import { retry } from "rxjs/operator/retry";
+import { ItemMaintenExport } from "./item-mainten-export.model";
+import { ScrollData } from "../../shared/scroll-data.model";
 
 @Injectable()
 export class ItemMaintenService extends BaseRestService<ItemMaintenance> {
@@ -51,6 +53,29 @@ export class ItemMaintenService extends BaseRestService<ItemMaintenance> {
       })
     }).pipe(catchError(
       this.handleError(this.serviceName + "/get item maintenance schedule", new Array<any>())));
+  }
+
+  getExportData(option: OptionItemMaintenSchedule): Observable<ScrollData<ItemMaintenExport>> {
+    return this.http.post<ScrollData<ItemMaintenExport>>(this.baseUrl + "ReportList/", JSON.stringify(option), {
+      params: new HttpParams().set("mode", "Data"),
+      headers: new HttpHeaders({
+        "Content-Type": "application/json",
+      })
+    }).pipe(catchError(
+      this.handleError(this.serviceName + "/get item maintenance history", <ScrollData<ItemMaintenExport>>{})));
+  }
+
+  getExportXlsx(option: OptionItemMaintenSchedule): Observable<any> {
+    let url: string = this.baseUrl + "ReportList/";
+
+    return this.http.post(url, JSON.stringify(option), {
+      params: new HttpParams().set("mode", "Export"),
+      headers: new HttpHeaders({
+        "Content-Type": "application/json",
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }),
+      responseType: 'blob' // <-- changed to blob 
+    }).map(res => this.downloadFile(res, 'application/xlsx', 'MaintenHistories.xlsx'));
   }
 }
 

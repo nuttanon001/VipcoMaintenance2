@@ -17,7 +17,8 @@ export class ProjectMasterService extends BaseRestService<ProjectMaster> {
   ) {
     super(
       http,
-      "api/ProjectCodeMaster/",
+      //"api/ProjectCodeMaster/",
+      "http://192.168.2.31/machinemk2/api/version2/ProjectCodeMaster/",
       "ProjectMasterService",
       "ProjectCodeMasterId",
       httpErrorHandler

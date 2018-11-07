@@ -194,7 +194,7 @@ export class RequireMaintenScheduleComponent implements OnInit, OnDestroy {
     // imitate db connection over a network
     this.reportForm.patchValue({
       Skip: event.first,
-      Take: (event.rows || 5),
+      Take: (event.rows || 10),
     });
   }
 

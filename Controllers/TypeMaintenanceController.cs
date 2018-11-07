@@ -12,6 +12,7 @@ using VipcoMaintenance.Services;
 using VipcoMaintenance.ViewModels;
 using VipcoMaintenance.Models.Maintenances;
 using AutoMapper;
+using VipcoMaintenance.Helper;
 
 namespace VipcoMaintenance.Controllers
 {
@@ -19,9 +20,9 @@ namespace VipcoMaintenance.Controllers
     [Route("api/[controller]")]
     public class TypeMaintenanceController : GenericController<TypeMaintenance>
     {
-        private readonly IRepositoryMaintenance<Item> repositoryItem;
-        public TypeMaintenanceController(IRepositoryMaintenance<TypeMaintenance> repo,
-            IRepositoryMaintenance<Item> repoItem,
+        private readonly IRepositoryMaintenanceMk2<Item> repositoryItem;
+        public TypeMaintenanceController(IRepositoryMaintenanceMk2<TypeMaintenance> repo,
+            IRepositoryMaintenanceMk2<Item> repoItem,
             IMapper mapper):base(repo, mapper) {
             this.repositoryItem = repoItem;
         }
@@ -32,22 +33,21 @@ namespace VipcoMaintenance.Controllers
         {
             if (ItemId > 0)
             {
-                var ItemData = (await this.repositoryItem.GetAsync(ItemId));
+                var ItemData = await this.repositoryItem.GetFirstOrDefaultAsync(
+                    x => x,x => x.ItemId.Equals(ItemId));
                 if (ItemData != null)
                 {
-                    var QueryData = this.repository.GetAllAsQueryable()
-                                        .Where(x => x.ItemTypeId == ItemData.ItemTypeId)
-                                        .AsQueryable();
+                    var QueryData = this.repository.GetToListAsync(x => x, x => x.ItemTypeId == ItemData.ItemTypeId);
 
                     var ListMapData = new List<TypeMaintenanceViewModel>();
-                    foreach (var item in await QueryData.ToListAsync())
+                    foreach (var item in ListMapData)
                         ListMapData.Add(this.mapper.Map<TypeMaintenance, TypeMaintenanceViewModel>(item));
 
                     return new JsonResult(ListMapData, this.DefaultJsonSettings);
                 }
                 else
                 {
-                    var QueryData = await this.repository.GetAllAsync();
+                    var QueryData = await this.repository.GetToListAsync(x => x);
                     return new JsonResult(QueryData, this.DefaultJsonSettings);
                 }
             }
@@ -61,55 +61,65 @@ namespace VipcoMaintenance.Controllers
         {
             if (Scroll == null)
                 return BadRequest();
-
-            var QueryData = this.repository.GetAllAsQueryable().AsQueryable();
-
-            if (Scroll.WhereId.HasValue)
-                QueryData = QueryData.Where(x => x.ItemType.WorkGroupId == Scroll.WhereId);
-
             // Filter
             var filters = string.IsNullOrEmpty(Scroll.Filter) ? new string[] { "" }
-                                : Scroll.Filter.ToLower().Split(null);
+                                : Scroll.Filter.Split(null);
 
-            foreach (var keyword in filters)
+            var predicate = PredicateBuilder.False<TypeMaintenance>();
+
+            foreach (string temp in filters)
             {
-                QueryData = QueryData.Where(x => x.Name.ToLower().Contains(keyword) ||
-                                                 x.Description.ToLower().Contains(keyword));
+                string keyword = temp;
+                predicate = predicate.Or(x => x.Name.ToLower().Contains(keyword) ||
+                                              x.Description.ToLower().Contains(keyword));
             }
-
+            if (!string.IsNullOrEmpty(Scroll.Where))
+                predicate = predicate.And(p => p.Creator == Scroll.Where);
+            if (Scroll.WhereId.HasValue)
+                predicate = predicate.And(x => x.ItemType.WorkGroupId == Scroll.WhereId);
+            //Order by
+            Func<IQueryable<TypeMaintenance>, IOrderedQueryable<TypeMaintenance>> order;
             // Order
             switch (Scroll.SortField)
             {
                 case "Name":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.Name);
+                        order = o => o.OrderByDescending(x => x.Name);
                     else
-                        QueryData = QueryData.OrderBy(e => e.Name);
+                        order = o => o.OrderBy(x => x.Name);
                     break;
+
                 case "Description":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.Description);
+                        order = o => o.OrderByDescending(x => x.Description);
                     else
-                        QueryData = QueryData.OrderBy(e => e.Description);
+                        order = o => o.OrderBy(x => x.Description);
                     break;
 
                 default:
-                    QueryData = QueryData.OrderByDescending(e => e.Name);
+                    order = o => o.OrderByDescending(x => x.Name);
                     break;
             }
 
+            var QueryData = await this.repository.GetToListAsync(
+                                    selector: selected => selected,  // Selected
+                                    predicate: predicate, // Where
+                                    orderBy: order, // Order
+                                    include: null, // Include
+                                    skip: Scroll.Skip ?? 0, // Skip
+                                    take: Scroll.Take ?? 50); // Take
+
             // Get TotalRow
-            Scroll.TotalRow = await QueryData.CountAsync();
-            // Skip Take
-            QueryData = QueryData.Skip(Scroll.Skip ?? 0).Take(Scroll.Take ?? 50);
+            Scroll.TotalRow = await this.repository.GetLengthWithAsync(predicate: predicate);
 
-            var ListMapData = new List<TypeMaintenanceViewModel>();
-            foreach (var item in await QueryData.ToListAsync())
-                ListMapData.Add(this.mapper.Map<TypeMaintenance, TypeMaintenanceViewModel>(item));
+            var mapDatas = new List<TypeMaintenanceViewModel>();
+            foreach (var item in QueryData)
+            {
+                var MapItem = this.mapper.Map<TypeMaintenance, TypeMaintenanceViewModel>(item);
+                mapDatas.Add(MapItem);
+            }
 
-            return new JsonResult(
-                new ScrollDataViewModel<TypeMaintenanceViewModel>
-                (Scroll, ListMapData), this.DefaultJsonSettings);
+            return new JsonResult(new ScrollDataViewModel<TypeMaintenanceViewModel>(Scroll, mapDatas), this.DefaultJsonSettings);
         }
     }
 }

@@ -12,6 +12,8 @@ export interface Item extends BaseModel {
   Property3?: string;
   ItemStatus?: ItemStatus;
   ItemImage?: string;
+  RegisterDate?: Date;
+  CancelDate?: Date;
   // Fk
   // ItemType
   ItemTypeId?: number;

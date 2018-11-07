@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using VipcoMaintenance.Helper;
 using VipcoMaintenance.Models.Machines;
 using VipcoMaintenance.Models.Maintenances;
 using VipcoMaintenance.Services;
@@ -16,14 +17,14 @@ namespace VipcoMaintenance.Controllers
     [Route("api/[controller]")]
     public class AdjustStockSpController : GenericController<AdjustStockSp>
     {
-        private readonly IRepositoryMaintenance<MovementStockSp> repositoryMovement;
-        private readonly IRepositoryMaintenance<SparePart> repositorySpare;
-        private readonly IRepositoryMachine<Employee> repositoryEmployee;
+        private readonly IRepositoryMaintenanceMk2<MovementStockSp> repositoryMovement;
+        private readonly IRepositoryMaintenanceMk2<SparePart> repositorySpare;
+        private readonly IRepositoryMachineMk2<Employee> repositoryEmployee;
 
-        public AdjustStockSpController(IRepositoryMaintenance<AdjustStockSp> repo,
-            IRepositoryMaintenance<MovementStockSp> repoMovement,
-            IRepositoryMaintenance<SparePart> repoSpare,
-            IRepositoryMachine<Employee> repoEmployee,
+        public AdjustStockSpController(IRepositoryMaintenanceMk2<AdjustStockSp> repo,
+            IRepositoryMaintenanceMk2<MovementStockSp> repoMovement,
+            IRepositoryMaintenanceMk2<SparePart> repoSpare,
+            IRepositoryMachineMk2<Employee> repoEmployee,
             IMapper map) : base(repo,map)
         {
             // Repository
@@ -36,7 +37,10 @@ namespace VipcoMaintenance.Controllers
         [HttpGet("GetKeyNumber")]
         public override async Task<IActionResult> Get(int key)
         {
-            var HasItem = await this.repository.GetAsynvWithIncludes(key, "AdjustStockSpId", new List<string> { "SparePart" });
+            var HasItem = await this.repository.GetFirstOrDefaultAsync(
+                x => x,x => x.AdjustStockSpId == key,null,
+                x => x.Include(z => z.SparePart));
+
             if (HasItem != null)
             {
                 var MapItem = this.mapper.Map<AdjustStockSp, AdjustStockSpViewModel>(HasItem);
@@ -52,15 +56,14 @@ namespace VipcoMaintenance.Controllers
         [HttpPost("GetScroll")]
         public async Task<IActionResult> GetScroll([FromBody] ScrollViewModel Scroll)
         {
+
             if (Scroll == null)
                 return BadRequest();
 
-            var QueryData = this.repository.GetAllAsQueryable()
-                                            .Include(x => x.SparePart)
-                                            .AsQueryable();
+            var predicate = PredicateBuilder.False<AdjustStockSp>();
 
             if (!string.IsNullOrEmpty(Scroll.Where))
-                QueryData = QueryData.Where(x => x.Creator == Scroll.Where);
+                predicate = predicate.And(p => p.Creator == Scroll.Where);
 
             // Filter
             var filters = string.IsNullOrEmpty(Scroll.Filter) ? new string[] { "" }
@@ -68,50 +71,60 @@ namespace VipcoMaintenance.Controllers
 
             foreach (var keyword in filters)
             {
-                QueryData = QueryData.Where(x => x.Description.ToLower().Contains(keyword) ||
-                                                 x.Remark.ToLower().Contains(keyword) ||
-                                                 x.SparePart.Name.ToLower().Contains(keyword));
+                predicate = predicate.And(x => x.Description.ToLower().Contains(keyword) ||
+                                                x.Remark.ToLower().Contains(keyword) ||
+                                                x.SparePart.Name.ToLower().Contains(keyword));
             }
-
+            //Order by
+            Func<IQueryable<AdjustStockSp>, IOrderedQueryable<AdjustStockSp>> order;
             // Order
             switch (Scroll.SortField)
             {
                 case "SparePartName":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.SparePart.Name);
+                        order = o => o.OrderByDescending(x => x.SparePart.Name);
                     else
-                        QueryData = QueryData.OrderBy(e => e.SparePart.Name);
+                        order = o => o.OrderBy(x => x.SparePart.Name);
                     break;
 
                 case "Quantity":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.Quantity);
+                        order = o => o.OrderByDescending(x => x.Quantity);
                     else
-                        QueryData = QueryData.OrderBy(e => e.Quantity);
+                        order = o => o.OrderBy(x => x.Quantity);
                     break;
 
                 case "AdjustDate":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.AdjustDate);
+                        order = o => o.OrderByDescending(x => x.AdjustDate);
                     else
-                        QueryData = QueryData.OrderBy(e => e.AdjustDate);
+                        order = o => o.OrderBy(x => x.AdjustDate);
                     break;
 
                 default:
-                    QueryData = QueryData.OrderByDescending(e => e.AdjustDate);
+                    order = o => o.OrderByDescending(x => x.AdjustDate);
                     break;
             }
+
+            var QueryData = await this.repository.GetToListAsync(
+                        selector: selected => selected,  // Selected
+                        predicate: predicate, // Where
+                        orderBy: order, // Order
+                        include: x => x.Include(z => z.SparePart), // Include
+                        skip: Scroll.Skip ?? 0, // Skip
+                        take: Scroll.Take ?? 50); // Take
+
             // Get TotalRow
-            Scroll.TotalRow = await QueryData.CountAsync();
-            // Skip Take
-            QueryData = QueryData.Skip(Scroll.Skip ?? 0).Take(Scroll.Take ?? 50);
+            Scroll.TotalRow = await this.repository.GetLengthWithAsync(predicate: predicate);
 
-            var HasData = await QueryData.ToListAsync();
-            var listData = new List<AdjustStockSpViewModel>();
-            foreach (var item in HasData)
-                listData.Add(this.mapper.Map<AdjustStockSp, AdjustStockSpViewModel>(item));
+            var mapDatas = new List<AdjustStockSpViewModel>();
+            foreach (var item in QueryData)
+            {
+                var MapItem = this.mapper.Map<AdjustStockSp, AdjustStockSpViewModel>(item);
+                mapDatas.Add(MapItem);
+            }
 
-            return new JsonResult(new ScrollDataViewModel<AdjustStockSpViewModel>(Scroll, listData), this.DefaultJsonSettings);
+            return new JsonResult(new ScrollDataViewModel<AdjustStockSpViewModel>(Scroll, mapDatas), this.DefaultJsonSettings);
         }
 
         // POST: api/AdjustStockSp/

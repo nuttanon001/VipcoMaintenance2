@@ -57,6 +57,7 @@ export class RequireMaintenEditComponent extends BaseEditComponent<RequireMainte
       this.editValue = {
         RequireMaintenanceId: 0,
         RequireDate: new Date,
+        RequireDateTime: new Date().toLocaleTimeString("th-TH", { hour12: false }),
         RequireStatus: RequireStatus.Waiting,
       };
 
@@ -82,6 +83,11 @@ export class RequireMaintenEditComponent extends BaseEditComponent<RequireMainte
       RequireMaintenanceId: [this.editValue.RequireMaintenanceId],
       RequireNo: [this.editValue.RequireNo],
       RequireDate: [this.editValue.RequireDate,
+        [
+          Validators.required,
+        ]
+      ],
+      RequireDateTime: [this.editValue.RequireDateTime,
         [
           Validators.required,
         ]

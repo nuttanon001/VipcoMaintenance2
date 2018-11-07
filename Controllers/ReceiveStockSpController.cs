@@ -13,6 +13,7 @@ using VipcoMaintenance.ViewModels;
 using VipcoMaintenance.Models.Machines;
 using VipcoMaintenance.Models.Maintenances;
 using AutoMapper;
+using VipcoMaintenance.Helper;
 
 namespace VipcoMaintenance.Controllers
 {
@@ -20,14 +21,14 @@ namespace VipcoMaintenance.Controllers
     [Route("api/[controller]")]
     public class ReceiveStockSpController : GenericController<ReceiveStockSp>
     {
-        private readonly IRepositoryMaintenance<MovementStockSp> repositoryMovement;
-        private readonly IRepositoryMaintenance<SparePart> repositorySpare;
-        private readonly IRepositoryMachine<Employee> repositoryEmployee;
+        private readonly IRepositoryMaintenanceMk2<MovementStockSp> repositoryMovement;
+        private readonly IRepositoryMaintenanceMk2<SparePart> repositorySpare;
+        private readonly IRepositoryMachineMk2<Employee> repositoryEmployee;
 
-        public ReceiveStockSpController(IRepositoryMaintenance<ReceiveStockSp> repo,
-            IRepositoryMaintenance<MovementStockSp> repoMovement,
-            IRepositoryMaintenance<SparePart> repoSpare,
-            IRepositoryMachine<Employee> repoEmployee,
+        public ReceiveStockSpController(IRepositoryMaintenanceMk2<ReceiveStockSp> repo,
+            IRepositoryMaintenanceMk2<MovementStockSp> repoMovement,
+            IRepositoryMaintenanceMk2<SparePart> repoSpare,
+            IRepositoryMachineMk2<Employee> repoEmployee,
             IMapper mapper
             ) : base(repo, mapper) {
             // Repository
@@ -40,7 +41,9 @@ namespace VipcoMaintenance.Controllers
         [HttpGet("GetKeyNumber")]
         public override async Task<IActionResult> Get(int key)
         {
-            var HasItem = await this.repository.GetAsync(key, true);
+            var HasItem = await this.repository.GetFirstOrDefaultAsync(
+                x => x,x => x.ReceiveStockSpId.Equals(key),null,
+                x => x.Include(z => z.SparePart));
             if (HasItem != null)
             {
                 var MapItem = this.mapper.Map<ReceiveStockSp, ReceiveStockSpViewModel>(HasItem);
@@ -58,62 +61,71 @@ namespace VipcoMaintenance.Controllers
         {
             if (Scroll == null)
                 return BadRequest();
-
-            var QueryData = this.repository.GetAllAsQueryable()
-                                            .AsQueryable();
-
-            if (!string.IsNullOrEmpty(Scroll.Where))
-                QueryData = QueryData.Where(x => x.Creator == Scroll.Where);
-
             // Filter
             var filters = string.IsNullOrEmpty(Scroll.Filter) ? new string[] { "" }
-                                : Scroll.Filter.ToLower().Split(null);
+                                : Scroll.Filter.Split(null);
 
-            foreach (var keyword in filters)
+            var predicate = PredicateBuilder.False<ReceiveStockSp>();
+
+            foreach (string temp in filters)
             {
-                QueryData = QueryData.Where(x => x.PurchaseOrder.ToLower().Contains(keyword) ||
-                                                 x.Remark.ToLower().Contains(keyword) ||
-                                                 x.SparePart.Name.ToLower().Contains(keyword));
+                string keyword = temp;
+                predicate = predicate.Or(x => x.PurchaseOrder.ToLower().Contains(keyword) ||
+                                            x.Remark.ToLower().Contains(keyword) ||
+                                            x.SparePart.Name.ToLower().Contains(keyword));
             }
-
+            if (!string.IsNullOrEmpty(Scroll.Where))
+                predicate = predicate.And(p => p.Creator == Scroll.Where);
+            //Order by
+            Func<IQueryable<ReceiveStockSp>, IOrderedQueryable<ReceiveStockSp>> order;
             // Order
             switch (Scroll.SortField)
             {
                 case "SparePartName":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.SparePart.Name);
+                        order = o => o.OrderByDescending(x => x.SparePart.Name);
                     else
-                        QueryData = QueryData.OrderBy(e => e.SparePart.Name);
+                        order = o => o.OrderBy(x => x.SparePart.Name);
                     break;
 
                 case "Quantity":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.Quantity);
+                        order = o => o.OrderByDescending(x => x.Quantity);
                     else
-                        QueryData = QueryData.OrderBy(e => e.Quantity);
+                        order = o => o.OrderBy(x => x.Quantity);
                     break;
 
                 case "ReceiveDate":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.ReceiveDate);
+                        order = o => o.OrderByDescending(x => x.ReceiveDate);
                     else
-                        QueryData = QueryData.OrderBy(e => e.ReceiveDate);
+                        order = o => o.OrderBy(x => x.ReceiveDate);
                     break;
 
                 default:
-                    QueryData = QueryData.OrderByDescending(e => e.ReceiveDate);
+                    order = o => o.OrderByDescending(x => x.ReceiveDate);
                     break;
             }
+
+            var QueryData = await this.repository.GetToListAsync(
+                                    selector: selected => selected,  // Selected
+                                    predicate: predicate, // Where
+                                    orderBy: order, // Order
+                                    include: x => x.Include(z => z.SparePart), // Include
+                                    skip: Scroll.Skip ?? 0, // Skip
+                                    take: Scroll.Take ?? 50); // Take
+
             // Get TotalRow
-            Scroll.TotalRow = await QueryData.CountAsync();
-            // Skip Take
-            QueryData = QueryData.Skip(Scroll.Skip ?? 0).Take(Scroll.Take ?? 50);
+            Scroll.TotalRow = await this.repository.GetLengthWithAsync(predicate: predicate);
 
-            var listData = new List<ReceiveStockSpViewModel>();
-            foreach (var item in await QueryData.ToListAsync())
-                listData.Add(this.mapper.Map<ReceiveStockSp, ReceiveStockSpViewModel>(item));
+            var mapDatas = new List<ReceiveStockSpViewModel>();
+            foreach (var item in QueryData)
+            {
+                var MapItem = this.mapper.Map<ReceiveStockSp, ReceiveStockSpViewModel>(item);
+                mapDatas.Add(MapItem);
+            }
 
-            return new JsonResult(new ScrollDataViewModel<ReceiveStockSpViewModel>(Scroll, listData), this.DefaultJsonSettings);
+            return new JsonResult(new ScrollDataViewModel<ReceiveStockSpViewModel>(Scroll, mapDatas), this.DefaultJsonSettings);
         }
 
         // POST: api/ReceiveStockSp/

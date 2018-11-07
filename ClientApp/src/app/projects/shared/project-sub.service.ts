@@ -17,7 +17,8 @@ export class ProjectSubService extends BaseRestService<ProjectSub> {
   ) {
     super(
       http,
-      "http://192.168.2.33/api/ProjectCodeDetail/",
+      //"http://192.168.2.33/api/ProjectCodeDetail/",
+      "http://192.168.2.31/machinemk2/api/version2/ProjectCodeDetail/",
       "ProjectSubService",
       "ProjectCodeDetailId",
       httpErrorHandler

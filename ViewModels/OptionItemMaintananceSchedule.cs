@@ -37,6 +37,10 @@ namespace VipcoMaintenance.ViewModels
         /// </summary>
         public int? TypeMaintenanceId { get; set; }
         /// <summary>
+        /// ItemTypeId
+        /// </summary>
+        public int? ItemTypeId { get; set; }
+        /// <summary>
         /// Start date
         /// </summary>
         public DateTime? SDate { get; set; }

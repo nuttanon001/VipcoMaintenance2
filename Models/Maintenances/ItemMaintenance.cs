@@ -17,7 +17,11 @@ namespace VipcoMaintenance.Models.Maintenances
         [Required]
         public DateTime PlanEndDate { get; set; }
         public DateTime? ActualStartDate { get; set; }
+        [StringLength(10)]
+        public string ActualStartDateTime { get; set; }
         public DateTime? ActualEndDate { get; set; }
+        [StringLength(10)]
+        public string ActualEndDateTime { get; set; }
         public StatusMaintenance? StatusMaintenance { get; set; }
         [StringLength(500)]
         public string Description { get; set; }

@@ -27,6 +27,8 @@ namespace VipcoMaintenance.Models.Maintenances
         public string Property2 { get; set; }
         [StringLength(200)]
         public string Property3 { get; set; }
+        public DateTime? RegisterDate { get; set; }
+        public DateTime? CancelDate { get; set; }
         public ItemStatus? ItemStatus { get; set; }
         public string ItemImage { get; set; }
         // Fk

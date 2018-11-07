@@ -12,6 +12,7 @@ using VipcoMaintenance.Services;
 using VipcoMaintenance.ViewModels;
 using VipcoMaintenance.Models.Maintenances;
 using AutoMapper;
+using VipcoMaintenance.Helper;
 
 namespace VipcoMaintenance.Controllers
 {
@@ -19,9 +20,9 @@ namespace VipcoMaintenance.Controllers
     [Route("api/[controller]")]
     public class SparePartController : GenericController<SparePart>
     {
-        private readonly IRepositoryMaintenance<MovementStockSp> repositoryMovement;
-        public SparePartController(IRepositoryMaintenance<SparePart> repo,
-            IRepositoryMaintenance<MovementStockSp> repoMovement,
+        private readonly IRepositoryMaintenanceMk2<MovementStockSp> repositoryMovement;
+        public SparePartController(IRepositoryMaintenanceMk2<SparePart> repo,
+            IRepositoryMaintenanceMk2<MovementStockSp> repoMovement,
             IMapper mapper) :base(repo, mapper) {
             //Repository
             this.repositoryMovement = repoMovement;
@@ -33,62 +34,73 @@ namespace VipcoMaintenance.Controllers
         {
             if (Scroll == null)
                 return BadRequest();
-
-            var QueryData = this.repository.GetAllAsQueryable().AsQueryable();
-
             // Filter
             var filters = string.IsNullOrEmpty(Scroll.Filter) ? new string[] { "" }
-                                : Scroll.Filter.ToLower().Split(null);
+                                : Scroll.Filter.Split(null);
 
-            if (Scroll.WhereId.HasValue)
-                QueryData = QueryData.Where(x => x.WorkGroupId == Scroll.WhereId);
+            var predicate = PredicateBuilder.False<SparePart>();
 
-            foreach (var keyword in filters)
+            foreach (string temp in filters)
             {
-                QueryData = QueryData.Where(x => x.Name.ToLower().Contains(keyword) ||
-                                                 x.Description.ToLower().Contains(keyword) ||
-                                                 x.Model.ToLower().Contains(keyword) ||
-                                                 x.Size.ToLower().Contains(keyword) ||
-                                                 x.Property.ToLower().Contains(keyword) ||
-                                                 x.Remark.ToLower().Contains(keyword));
+                string keyword = temp;
+                predicate = predicate.Or(x => x.Name.ToLower().Contains(keyword) ||
+                                            x.Description.ToLower().Contains(keyword) ||
+                                            x.Model.ToLower().Contains(keyword) ||
+                                            x.Size.ToLower().Contains(keyword) ||
+                                            x.Property.ToLower().Contains(keyword) ||
+                                            x.Remark.ToLower().Contains(keyword));
             }
-
+            if (!string.IsNullOrEmpty(Scroll.Where))
+                predicate = predicate.And(p => p.Creator == Scroll.Where);
+            //Order by
+            Func<IQueryable<SparePart>, IOrderedQueryable<SparePart>> order;
             // Order
             switch (Scroll.SortField)
             {
                 case "Name":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.Name);
+                        order = o => o.OrderByDescending(x => x.Name);
                     else
-                        QueryData = QueryData.OrderBy(e => e.Name);
+                        order = o => o.OrderBy(x => x.Name);
                     break;
+
                 case "Model":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.Model);
+                        order = o => o.OrderByDescending(x => x.Model);
                     else
-                        QueryData = QueryData.OrderBy(e => e.Model);
+                        order = o => o.OrderBy(x => x.Model);
                     break;
+
                 default:
-                    QueryData = QueryData.OrderByDescending(e => e.Name);
+                    order = o => o.OrderByDescending(x => x.Name);
                     break;
             }
-            // Get TotalRow
-            Scroll.TotalRow = await QueryData.CountAsync();
-            // Skip Take
-            QueryData = QueryData.Skip(Scroll.Skip ?? 0).Take(Scroll.Take ?? 50);
 
-            var listData = new List<SparePartViewModel>();
-            foreach (var item in await QueryData.ToListAsync())
+            var QueryData = await this.repository.GetToListAsync(
+                                    selector: selected => selected,  // Selected
+                                    predicate: predicate, // Where
+                                    orderBy: order, // Order
+                                    include: null, // Include
+                                    skip: Scroll.Skip ?? 0, // Skip
+                                    take: Scroll.Take ?? 50); // Take
+
+            // Get TotalRow
+            Scroll.TotalRow = await this.repository.GetLengthWithAsync(predicate: predicate);
+
+            var mapDatas = new List<SparePartViewModel>();
+            foreach (var item in QueryData)
             {
-                var MapData = this.mapper.Map<SparePart, SparePartViewModel>(item);
-                MapData.OnHand = await this.repositoryMovement.GetAllAsQueryable()
-                                            .Where(x => x.SparePartId == MapData.SparePartId && x.MovementStatus != MovementStatus.Cancel)
-                                            .SumAsync(x => x.MovementStatus == MovementStatus.AdjustIncrement || 
-                                                           x.MovementStatus == MovementStatus.ReceiveStock ? x.Quantity : (x.Quantity * -1));
-                listData.Add(MapData);
+                var MapItem = this.mapper.Map<SparePart, SparePartViewModel>(item);
+                MapItem.OnHand = (await this.repositoryMovement.GetToListAsync(
+                                        x => x, x => x.SparePartId == MapItem.SparePartId && 
+                                                x.MovementStatus != MovementStatus.Cancel))
+                                           .Sum(x => x.MovementStatus == MovementStatus.AdjustIncrement ||
+                                                     x.MovementStatus == MovementStatus.ReceiveStock ? x.Quantity : (x.Quantity * -1));
+                mapDatas.Add(MapItem);
             }
 
-            return new JsonResult(new ScrollDataViewModel<SparePartViewModel>(Scroll, listData), this.DefaultJsonSettings);
+            return new JsonResult(new ScrollDataViewModel<SparePartViewModel>(Scroll, mapDatas), this.DefaultJsonSettings);
+          
         }
     }
 }

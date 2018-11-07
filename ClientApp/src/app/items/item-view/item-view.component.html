@@ -72,6 +72,22 @@
 
         <div class="row my-1">
           <div class="my-label">
+            RegisterDate :
+          </div>
+          <div class="my-value">
+            {{(displayValue?.RegisterDate | date:'dd/MM/yyyy')|| "-"}}
+          </div>
+
+          <div class="my-label">
+            CancelDate :
+          </div>
+          <div class="my-value">
+            {{(displayValue?.CancelDate| date:'dd/MM/yyyy') || "-"}}
+          </div>
+        </div>
+
+        <div class="row my-1">
+          <div class="my-label">
             Property :
           </div>
           <div class="my-value">

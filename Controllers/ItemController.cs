@@ -14,6 +14,7 @@ using VipcoMaintenance.Models.Machines;
 using VipcoMaintenance.Models.Maintenances;
 
 using AutoMapper;
+using VipcoMaintenance.Helper;
 
 namespace VipcoMaintenance.Controllers
 {
@@ -22,17 +23,17 @@ namespace VipcoMaintenance.Controllers
     public class ItemController : GenericController<Item>
     {
         // IRepository
-        private readonly IRepositoryMachine<Employee> repositoryEmp;
-        private readonly IRepositoryMachine<EmployeeGroupMis> repositoryGroupMis;
-        private readonly IRepositoryMaintenance<ItemType> repositoryType;
-        private readonly IRepositoryMaintenance<RequireMaintenance> repositoryRequireMaintenance;
+        private readonly IRepositoryMachineMk2<Employee> repositoryEmp;
+        private readonly IRepositoryMachineMk2<EmployeeGroupMis> repositoryGroupMis;
+        private readonly IRepositoryMaintenanceMk2<ItemType> repositoryType;
+        private readonly IRepositoryMaintenanceMk2<RequireMaintenance> repositoryRequireMaintenance;
 
 
-        public ItemController(IRepositoryMaintenance<Item> repo, 
-            IRepositoryMachine<Employee> repoEmp,
-            IRepositoryMachine<EmployeeGroupMis> repoGroupMis,
-            IRepositoryMaintenance<ItemType> repoType,
-            IRepositoryMaintenance<RequireMaintenance> repoRequireMain,
+        public ItemController(IRepositoryMaintenanceMk2<Item> repo, 
+            IRepositoryMachineMk2<Employee> repoEmp,
+            IRepositoryMachineMk2<EmployeeGroupMis> repoGroupMis,
+            IRepositoryMaintenanceMk2<ItemType> repoType,
+            IRepositoryMaintenanceMk2<RequireMaintenance> repoRequireMain,
             IMapper mapper) : base(repo, mapper) {
             // Repository Machine
             this.repositoryEmp = repoEmp;
@@ -46,7 +47,9 @@ namespace VipcoMaintenance.Controllers
         [HttpGet("GetKeyNumber")]
         public override async Task<IActionResult> Get(int key)
         {
-            var HasItem = await this.repository.GetAsync(key, true);
+            var HasItem = await this.repository.GetFirstOrDefaultAsync(
+                z => z, z => z.ItemId == key, null,
+                z => z.Include(x => x.ItemType).Include(x => x.Branch));
             if (HasItem != null)
             {
                 var MapItem = this.mapper.Map<Item, ItemViewModel>(HasItem);
@@ -63,9 +66,10 @@ namespace VipcoMaintenance.Controllers
         [HttpGet("ItemByGroup")]
         public async Task<IActionResult> ItemByGroup(string key)
         {
-            var HasData = await this.repository.GetAllAsQueryable()
-                                    .Where(x => x.GroupMis == key)
-                                    .ToListAsync();
+            var HasData = await this.repository.GetToListAsync(
+                x => x, x => x.GroupMis == key, null,
+                z => z.Include(x => x.ItemType).Include(x => x.Branch));
+
             if (HasData.Any()){
                 var listData = new List<ItemViewModel>();
                 foreach(var item in HasData){
@@ -91,28 +95,28 @@ namespace VipcoMaintenance.Controllers
                     return BadRequest();
                 }
 
-                var QueryData = this.repository.GetAllAsQueryable()
-                                                .Select(x => new Item
-                                                {
-                                                    ItemId = x.ItemId,
-                                                    GroupMis = x.GroupMis ?? "-"
-                                                }).AsQueryable();
-
+                var predicate = PredicateBuilder.False<Item>();
+                //var QueryData = this.repository.GetAllAsQueryable()
+                //                                .Select(x => new Item
+                //                                {
+                //                                    ItemId = x.ItemId,
+                //                                    GroupMis = x.GroupMis ?? "-"
+                //                                }).AsQueryable();
                 if (Scroll.WhereId.HasValue)
                 {
                     if (Scroll.WhereId > 0)
-                        QueryData = QueryData.Where(x => x.ItemTypeId == Scroll.WhereId);
+                        predicate = predicate.And(x => x.ItemTypeId == Scroll.WhereId);
                 }
-
                 if (!string.IsNullOrEmpty(Scroll.Where))
-                    QueryData = QueryData.Where(x => x.Creator == Scroll.Where);
+                    predicate = predicate.And(x => x.Creator == Scroll.Where);
 
-                var QueryData2 = await QueryData.GroupBy(x => x.GroupMis).Select(x => new ItemByGroupViewModel()
+                var HasData = (await this.repository.GetToListAsync(x => x, predicate)).ToList();
+                var QueryData2 = HasData.GroupBy(x => x.GroupMis).Select(x => new ItemByGroupViewModel()
                                         {
                                             GroupMis = string.IsNullOrEmpty(x.Key) ? "-" : x.Key,
-                                            GroupMisString = string.IsNullOrEmpty(x.Key) ? "ไม่ระบุ" : this.repositoryGroupMis.Get(x.Key,false).GroupDesc,
+                                            GroupMisString = string.IsNullOrEmpty(x.Key) ? "ไม่ระบุ" : this.repositoryGroupMis.GetFirstOrDefault(z => z,z => z.GroupMis == x.Key).GroupDesc,
                                             ItemCount = x.Count()
-                                        }).ToListAsync();
+                                        }).ToList();
 
                 // Filter
                 var filters = string.IsNullOrEmpty(Scroll.Filter) ? new string[] { "" }
@@ -165,75 +169,81 @@ namespace VipcoMaintenance.Controllers
         public async Task<IActionResult> GetScroll([FromBody] ScrollViewModel Scroll)
         {
             if (Scroll == null)
-            {
                 return BadRequest();
+            // Filter
+            var filters = string.IsNullOrEmpty(Scroll.Filter) ? new string[] { "" }
+                                : Scroll.Filter.Split(null);
+
+            var predicate = PredicateBuilder.False<Item>();
+
+            foreach (string temp in filters)
+            {
+                string keyword = temp;
+                predicate = predicate.Or(x => x.Branch.Name.ToLower().Contains(keyword) ||
+                                            x.Description.ToLower().Contains(keyword) ||
+                                            x.ItemCode.ToLower().Contains(keyword) ||
+                                            x.Name.ToLower().Contains(keyword) ||
+                                            x.ItemType.Name.ToLower().Contains(keyword));
             }
-
-            var QueryData = this.repository.GetAllAsQueryable()
-                                            .AsQueryable();
-
             if (Scroll.WhereId.HasValue)
             {
                 if (Scroll.WhereId > 0)
-                    QueryData = QueryData.Where(x => x.ItemTypeId == Scroll.WhereId);
+                    predicate = predicate.And(x => x.ItemTypeId == Scroll.WhereId);
             }
-
             if (!string.IsNullOrEmpty(Scroll.Where))
-                QueryData = QueryData.Where(x => x.Creator == Scroll.Where);
+                predicate = predicate.And(p => p.Creator == Scroll.Where);
 
-            // Filter
-            var filters = string.IsNullOrEmpty(Scroll.Filter) ? new string[] { "" }
-                                : Scroll.Filter.ToLower().Split(null);
-
-            foreach (var keyword in filters)
-            {
-                QueryData = QueryData.Where(x => x.Branch.Name.ToLower().Contains(keyword) ||
-                                                 x.Description.ToLower().Contains(keyword) ||
-                                                 x.ItemCode.ToLower().Contains(keyword) ||
-                                                 x.Name.ToLower().Contains(keyword) ||
-                                                 x.ItemType.Name.ToLower().Contains(keyword));
-            }
-
+            //Order by
+            Func<IQueryable<Item>, IOrderedQueryable<Item>> order;
             // Order
             switch (Scroll.SortField)
             {
                 case "ItemCode":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.ItemCode);
+                        order = o => o.OrderByDescending(x => x.ItemCode);
                     else
-                        QueryData = QueryData.OrderBy(e => e.ItemCode);
+                        order = o => o.OrderBy(x => x.ItemCode);
                     break;
+
                 case "Name":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.Name);
+                        order = o => o.OrderByDescending(x => x.Name);
                     else
-                        QueryData = QueryData.OrderBy(e => e.Name);
+                        order = o => o.OrderBy(x => x.Name);
                     break;
                 case "ItemTypeString":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.ItemType.Name);
+                        order = o => o.OrderByDescending(x => x.ItemType.Name);
                     else
-                        QueryData = QueryData.OrderBy(e => e.ItemType.Name);
+                        order = o => o.OrderBy(x => x.ItemType.Name);
                     break;
 
                 default:
-                    QueryData = QueryData.OrderBy(e => e.ItemCode);
+                    order = o => o.OrderBy(x => x.ItemCode);
                     break;
             }
-            // Get TotalRow
-            Scroll.TotalRow = await QueryData.CountAsync();
-            // Skip Take
-            QueryData = QueryData.Skip(Scroll.Skip ?? 0).Take(Scroll.Take ?? 15);
 
-            var listData = new List<ItemViewModel>();
-            foreach (var item in await QueryData.ToListAsync())
+            var QueryData = await this.repository.GetToListAsync(
+                                    selector: selected => selected,  // Selected
+                                    predicate: predicate, // Where
+                                    orderBy: order, // Order
+                                    include: z => z.Include(x => x.ItemType).Include(x => x.Branch), // Include
+                                    skip: Scroll.Skip ?? 0, // Skip
+                                    take: Scroll.Take ?? 50); // Take
+
+            // Get TotalRow
+            Scroll.TotalRow = await this.repository.GetLengthWithAsync(predicate: predicate);
+
+            var mapDatas = new List<ItemViewModel>();
+            foreach (var item in QueryData)
             {
-                var MapData = this.mapper.Map<Item, ItemViewModel>(item);
-                if (!string.IsNullOrEmpty(MapData.GroupMis))
-                    MapData.GroupMisString = (await this.repositoryGroupMis.GetAsync(MapData.GroupMis)).GroupDesc ?? "-";
-                listData.Add(MapData);
+                var MapItem = this.mapper.Map<Item, ItemViewModel>(item);
+                if (!string.IsNullOrEmpty(MapItem.GroupMis))
+                    MapItem.GroupMisString = (await this.repositoryGroupMis.GetAsync(MapItem.GroupMis)).GroupDesc ?? "-";
+                mapDatas.Add(MapItem);
             }
-            return new JsonResult(new ScrollDataViewModel<ItemViewModel>(Scroll, listData), this.DefaultJsonSettings);
+
+            return new JsonResult(new ScrollDataViewModel<ItemViewModel>(Scroll, mapDatas), this.DefaultJsonSettings);
         }
 
         // Put: api/Item/ChangeGroupOfItem
@@ -253,8 +263,7 @@ namespace VipcoMaintenance.Controllers
                         excluse.Add(record.ItemId);
                 }
 
-                Expression<Func<Item, bool>> match = i => i.GroupMis == Group;
-                var dbItems = await this.repository.FindAllAsync(match);
+                var dbItems = await this.repository.GetToListAsync(x => x,x => x.GroupMis == Group);
                 if (dbItems != null)
                 {
                     // Remove group if not pick
@@ -289,11 +298,11 @@ namespace VipcoMaintenance.Controllers
         {
             if (Option != null)
             {
-                var HasData = await this.repositoryRequireMaintenance.GetAllAsQueryable()
-                                        .Where(x => x.ItemId == Option.ItemId && 
-                                                    x.RequireStatus != RequireStatus.Cancel)
-                                        .OrderByDescending(x => x.RequireDate)
-                                        .ToListAsync();
+                var HasData = await this.repositoryRequireMaintenance.GetToListAsync(x => x,
+                                            x => x.ItemId == Option.ItemId &&
+                                                 x.RequireStatus != RequireStatus.Cancel,
+                                            x => x.OrderByDescending(z => z.RequireDate),
+                                            x => x.Include(z => z.ItemMaintenance));
                 if (HasData.Any())
                 {
                     var MapData = HasData.Select(x => new

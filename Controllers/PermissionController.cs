@@ -19,7 +19,7 @@ namespace VipcoMaintenance.Controllers
     [Route("api/[controller]")]
     public class PermissionController : GenericController<Permission>
     {
-        public PermissionController(IRepositoryMaintenance<Permission> repo,
+        public PermissionController(IRepositoryMaintenanceMk2<Permission> repo,
             IMapper mapper) : base(repo, mapper) { }
 
         [HttpGet("GetPermission/{UserId}")]
@@ -28,7 +28,7 @@ namespace VipcoMaintenance.Controllers
             if (UserId < 1)
                 return BadRequest();
 
-            var HasPermission = await this.repository.GetAllAsQueryable().FirstOrDefaultAsync(x => x.UserId == UserId);
+            var HasPermission = await this.repository.GetFirstOrDefaultAsync(x => x,x => x.UserId == UserId);
             if (HasPermission == null)
                 return BadRequest();
 

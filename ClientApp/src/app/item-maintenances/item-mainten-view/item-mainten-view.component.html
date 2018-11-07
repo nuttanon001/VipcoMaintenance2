@@ -49,9 +49,11 @@
             Actual :
           </div>
           <div class="my-value">
-            {{(displayValue.ActualStartDate | date:'dd/MM/yyyy')|| "-"}}
+            {{(displayValue.ActualStartDate | date:'dd/MM/yyyy')|| "-"}} :
+            {{(displayValue.ActualStartDateTime || "")}}
             &nbsp;|&nbsp;
-            {{(displayValue.ActualEndDate | date:'dd/MM/yyyy')|| "-"}}
+            {{(displayValue.ActualEndDate | date:'dd/MM/yyyy')|| "-"}} :
+            {{(displayValue.ActualEndDateTime || "")}}
           </div>
         </div>
         <!--Row4-->

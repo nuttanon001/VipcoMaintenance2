@@ -1,7 +1,10 @@
 <div class="master-container" *ngIf="!ItemMaintenanceEdit;else EditBlock">
-  <div class="child-col-container" *ngIf="!isLinkMail">
-    <h4 class="text-primary">Maintenance Schedule </h4>
+  <div *ngIf="onLoading" class="loading-shade">
+    <mat-spinner></mat-spinner>
+  </div>
+  <div class="child-col-container" *ngIf="!isLinkMail" style="min-height:80px;">
     <div class="child-row-container my-1">
+      <h5 class="text-primary">Maintenance Schedule </h5>
       <div style="margin-right:5px;color:forestgreen;">
         <i class="fa fa-square" aria-hidden="true"></i>
       </div> Plan
@@ -12,40 +15,41 @@
         <i class="fa fa-circle text-danger" aria-hidden="true"></i>
       </div> Response
     </div>
-    <hr class="w-100 bg-info m-0" />
-    <form [formGroup]="reportForm" class="form-content m-0">
-      <div>
-        <i class="fa fa-search" aria-hidden="true"></i>
-        <input type="text" formControlName="Filter" placeholder="Insert paint task schedule."
-               style="width:200px;">
-      </div>
-      <div>
-        <i class="fa fa-product-hunt" aria-hidden="true"></i>
-        <input type="text" placeholder="Choose job-no here"
-               (click)="onShowDialog('Project')" readonly
-               style="width:250px;cursor:pointer;" formControlName="ProjectMasterString"
-               matTooltip="Choose job-no here.">
-      </div>
-      <div>
-        <i class="fa fa-user-circle" aria-hidden="true"></i>
-        <input type="text" placeholder="Choose employee requested here."
-               (click)="onShowDialog('Employee')" readonly
-               style="width:250px;cursor:pointer;" formControlName="CreatorName"
-               matTooltip="Choose employee requested here.">
-      </div>
-      <div style="margin:0 0 10px 0;">
-        <button type="button" mat-mini-fab color="warn" (click)="resetFilter()"
-                matTooltip="Reset all filter" style="margin:4px;">
-          <i class="fa fa-2x fa-minus" aria-hidden="true" style="margin:0px;"></i>
-        </button>
-      </div>
-    </form>
+    <div class="my-1">
+      <form [formGroup]="reportForm" class="form-content m-0">
+        <div>
+          <i class="fa fa-search" aria-hidden="true"></i>
+          <input type="text" formControlName="Filter" placeholder="Insert paint task schedule."
+                 style="width:200px;">
+        </div>
+        <div>
+          <i class="fa fa-product-hunt" aria-hidden="true"></i>
+          <input type="text" placeholder="Choose job-no here"
+                 (click)="onShowDialog('Project')" readonly
+                 style="width:250px;cursor:pointer;" formControlName="ProjectMasterString"
+                 matTooltip="Choose job-no here.">
+        </div>
+        <div>
+          <i class="fa fa-user-circle" aria-hidden="true"></i>
+          <input type="text" placeholder="Choose employee requested here."
+                 (click)="onShowDialog('Employee')" readonly
+                 style="width:250px;cursor:pointer;" formControlName="CreatorName"
+                 matTooltip="Choose employee requested here.">
+        </div>
+        <div style="margin:0 0 10px 0;">
+          <button type="button" mat-mini-fab color="warn" (click)="resetFilter()"
+                  matTooltip="Reset all filter" style="margin:4px;">
+            <i class="fa fa-2x fa-minus" aria-hidden="true" style="margin:0px;"></i>
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
   <div class="bottom-container m-1">
     <p-dataTable [value]="itemMaintenances" rowGroupMode="rowspan"
-                 [lazy]="true" [rows]="5" [paginator]="true" [rowsPerPageOptions]="[5 , 10 , 20 , 30]"
+                 [lazy]="true" [rows]="10" [paginator]="true" [rowsPerPageOptions]="[10 , 20 , 30]"
                  [totalRecords]="totalRecords" (onLazyLoad)="loadDataLazy($event)"
-                 scrollable="true" scrollWidth="94vw" scrollHeight="70vh">
+                 scrollable="true">
       <p-headerColumnGroup>
         <p-row>
           <p-column *ngFor="let colup of columnsUpper" [header]="colup.header"

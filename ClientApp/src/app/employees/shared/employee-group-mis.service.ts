@@ -18,7 +18,8 @@ export class EmployeeGroupMisService extends BaseRestService<EmployeeGroupMis> {
   ) {
     super(
       http,
-      "api/EmployeeGroupMis/",
+      //"api/EmployeeGroupMis/",
+      "http://192.168.2.31/machinemk2/api/version2/EmployeeGroupMis/",
       "EmployeeGroupMisService",
       "GroupMIS",
       httpErrorHandler

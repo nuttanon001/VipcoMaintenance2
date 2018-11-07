@@ -13,6 +13,8 @@ namespace VipcoMaintenance.Models.Maintenances
         public string RequireNo { get; set; }
         [Required]
         public DateTime RequireDate { get; set; }
+        [StringLength(10)]
+        public string RequireDateTime { get; set; }
         [StringLength(500)]
         public string Description { get; set; }
         [StringLength(200)]

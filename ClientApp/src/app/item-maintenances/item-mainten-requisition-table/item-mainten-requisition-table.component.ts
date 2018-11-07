@@ -41,10 +41,12 @@ export class ItemMaintenRequisitionTableComponent implements OnInit , OnChanges 
   selectedRow: RequisitionStock;
 
   ngOnChanges() {
+    if (this.requisitions) {
+      this.requisitions.forEach((item, index) => {
+        item.TotalPrice = item.Quantity * item.UnitPrice;
+      });
+    }
     // console.log("ONChange", JSON.stringify(this.requisitions));
-    this.requisitions.forEach((item, index) => {
-      item.TotalPrice = item.Quantity * item.UnitPrice;
-    });
     this.dataSource = new MatTableDataSource<RequisitionStock>(this.requisitions);
   }
 

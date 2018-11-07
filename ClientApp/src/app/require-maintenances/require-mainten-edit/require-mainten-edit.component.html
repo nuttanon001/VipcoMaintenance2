@@ -14,8 +14,14 @@
                        id="RequireNo" formControlName="RequireNo">
               </mat-form-field>
             </div>
-
             <div class="right-content">
+              <span>-</span>
+            </div>
+          
+          </div>
+
+          <div class="row-form">
+            <div class="left-content">
               <mat-form-field>
                 <input matInput [matDatepicker]="RequireDate" placeholder="Choose a date"
                        id="RequireDate" formControlName="RequireDate" required readonly>
@@ -23,6 +29,16 @@
                 <mat-datepicker #RequireDate readonly></mat-datepicker>
                 <mat-error *ngIf="editValueForm.controls.RequireDate.hasError('required')">
                   Date is <strong>required</strong>
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <div class="right-content">
+              <mat-form-field hintLabel="Time">
+                <input matInput type="time" placeholder="RequireDateTime"
+                       id="RequireDateTime" formControlName="RequireDateTime">
+                <mat-error *ngIf="editValueForm.controls.RequireDateTime.hasError('required')">
+                  Time is <strong>required</strong>
                 </mat-error>
               </mat-form-field>
             </div>

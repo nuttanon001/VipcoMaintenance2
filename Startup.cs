@@ -35,12 +35,14 @@ namespace VipcoMaintenance
             services.AddAutoMapper(typeof(Startup));
             // Change AddDbContextPool if EF Core 2.1
             services.AddDbContextPool<MaintenanceContext>(option =>
-                option.UseLazyLoadingProxies().UseSqlServer(Configuration.GetConnectionString("MaintenanceConnection")))
+                option.UseSqlServer(Configuration.GetConnectionString("MaintenanceConnection")))
                     .AddDbContextPool<MachineContext>(option =>
-                option.UseLazyLoadingProxies().UseSqlServer(Configuration.GetConnectionString("MachineConnection")));
+                option.UseSqlServer(Configuration.GetConnectionString("MachineConnection")));
             // Add Repositoy
             services.AddTransient(typeof(IRepositoryMaintenance<>), typeof(RepositoryMaintenance<>))
-                    .AddTransient(typeof(IRepositoryMachine<>), typeof(RepositoryMachine<>));
+                    .AddTransient(typeof(IRepositoryMachine<>), typeof(RepositoryMachine<>))
+                    .AddTransient(typeof(IRepositoryMachineMk2<>), typeof(RepositoryMachineMk2<>))
+                    .AddTransient(typeof(IRepositoryMaintenanceMk2<>), typeof(RepositoryMaintenanceMk2<>));
             // In production, the Angular files will be served from this directory
             services.AddSpaStaticFiles(configuration =>
             {

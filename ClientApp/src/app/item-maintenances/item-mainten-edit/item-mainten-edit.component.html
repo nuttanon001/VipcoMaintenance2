@@ -105,6 +105,12 @@
             </div>
 
             <div class="right-content">
+              &nbsp;
+            </div>
+           
+          </div>
+          <div class="row-form">
+            <div class="left-content">
               <div class="row-form w-75">
                 <div class="left-content">
                   <mat-form-field>
@@ -117,6 +123,20 @@
                 </div>
 
                 <div class="right-content">
+                  <mat-form-field hintLabel="Time">
+                    <input matInput type="time" placeholder="ActualStart-Time"
+                           id="ActualStartDateTime" formControlName="ActualStartDateTime">
+                    <mat-error *ngIf="editValueForm.controls.ActualStartDateTime.hasError('required')">
+                      Time is <strong>required</strong>
+                    </mat-error>
+                  </mat-form-field>
+                </div>
+              </div>
+            </div>
+
+            <div class="right-content">
+              <div class="row-form w-75">
+                <div class="left-content">
                   <mat-form-field>
                     <input matInput [matDatepicker]="ActualEndDate" placeholder="Actual end date"
                            id="ActualEndDate" formControlName="ActualEndDate"
@@ -126,9 +146,18 @@
                     <mat-datepicker #ActualEndDate></mat-datepicker>
                   </mat-form-field>
                 </div>
+
+                <div class="right-content">
+                  <mat-form-field hintLabel="Time">
+                    <input matInput type="time" placeholder="ActualEnd-Time"
+                           id="ActualEndDateTime" formControlName="ActualEndDateTime">
+                    <mat-error *ngIf="editValueForm.controls.ActualEndDateTime.hasError('required')">
+                      Time is <strong>required</strong>
+                    </mat-error>
+                  </mat-form-field>
+                </div>
               </div>
             </div>
-           
           </div>
           <!--Row4-->
           
@@ -197,7 +226,7 @@
             <mat-icon aria-hidden="true">add_circle_outline</mat-icon>
           </button>
         </div>
-        <div>
+        <div *ngIf="editValue && editValue.ItemMainHasEmployees">
           <app-item-mainten-employee-table [dataRows]="editValue.ItemMainHasEmployees"
                                            (returnSelected)="onItemMaintenanceEmployeeRemove($event)">
           </app-item-mainten-employee-table>
@@ -216,7 +245,7 @@
             <mat-icon>add_circle_outline</mat-icon>
           </button>
         </div>
-        <div>
+        <div *ngIf="editValue && editValue.RequisitionStockSps">
           <app-item-mainten-requisition-table [requisitions]="editValue.RequisitionStockSps" (returnSelected)="actionRequisition($event)">
           </app-item-mainten-requisition-table>
         </div>

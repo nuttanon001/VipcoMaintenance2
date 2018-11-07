@@ -5,6 +5,7 @@ export interface RequireMaintenance extends BaseModel {
   RequireMaintenanceId: number;
   RequireNo?: string;
   RequireDate?: Date;
+  RequireDateTime?: string;
   Description?: string;
   Remark?: string;
   RequireStatus?: RequireStatus;

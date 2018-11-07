@@ -17,7 +17,8 @@ export class EmployeeService extends BaseRestService<Employee> {
   ) {
     super(
       http,
-      "api/Employee/",
+      //"api/Employee/",
+      "http://192.168.2.31/machinemk2/api/version2/Employee/",
       "EmployeeService",
       "EmpCode",
       httpErrorHandler

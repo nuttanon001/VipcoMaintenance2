@@ -12,6 +12,7 @@ using VipcoMaintenance.Services;
 using VipcoMaintenance.ViewModels;
 using VipcoMaintenance.Models.Maintenances;
 using AutoMapper;
+using VipcoMaintenance.Helper;
 
 namespace VipcoMaintenance.Controllers
 {
@@ -19,7 +20,7 @@ namespace VipcoMaintenance.Controllers
     [Route("api/[controller]")]
     public class BranchController : GenericController<Branch>
     {
-        public BranchController(IRepositoryMaintenance<Branch> repo,
+        public BranchController(IRepositoryMaintenanceMk2<Branch> repo,
             IMapper mapper) : base(repo, mapper) {}
 
         // POST: api/Branch/GetScroll
@@ -28,49 +29,63 @@ namespace VipcoMaintenance.Controllers
         {
             if (Scroll == null)
                 return BadRequest();
-
-            var QueryData = this.repository.GetAllAsQueryable().AsQueryable();
-
             // Filter
             var filters = string.IsNullOrEmpty(Scroll.Filter) ? new string[] { "" }
-                                : Scroll.Filter.ToLower().Split(null);
+                                : Scroll.Filter.Split(null);
 
-            foreach (var keyword in filters)
+            var predicate = PredicateBuilder.False<Branch>();
+
+            foreach (string temp in filters)
             {
-                QueryData = QueryData.Where(x => x.Name.ToLower().Contains(keyword) ||
-                                                 x.Address.ToLower().Contains(keyword));
+                string keyword = temp;
+                predicate = predicate.Or(x => x.Name.ToLower().Contains(keyword) ||
+                                              x.Address.ToLower().Contains(keyword));
             }
-
+            if (!string.IsNullOrEmpty(Scroll.Where))
+                predicate = predicate.And(p => p.Creator == Scroll.Where);
+            //Order by
+            Func<IQueryable<Branch>, IOrderedQueryable<Branch>> order;
             // Order
             switch (Scroll.SortField)
             {
                 case "Name":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.Name);
+                        order = o => o.OrderByDescending(x => x.Name);
                     else
-                        QueryData = QueryData.OrderBy(e => e.Name);
+                        order = o => o.OrderBy(x => x.Name);
                     break;
+
                 case "Address":
                     if (Scroll.SortOrder == -1)
-                        QueryData = QueryData.OrderByDescending(e => e.Address);
+                        order = o => o.OrderByDescending(x => x.Address);
                     else
-                        QueryData = QueryData.OrderBy(e => e.Address);
+                        order = o => o.OrderBy(x => x.Address);
                     break;
+
                 default:
-                    QueryData = QueryData.OrderBy(e => e.Name);
+                    order = o => o.OrderBy(x => x.Name);
                     break;
             }
+
+            var QueryData = await this.repository.GetToListAsync(
+                                    selector: selected => selected,  // Selected
+                                    predicate: predicate, // Where
+                                    orderBy: order, // Order
+                                    include: null, // Include
+                                    skip: Scroll.Skip ?? 0, // Skip
+                                    take: Scroll.Take ?? 50); // Take
+
             // Get TotalRow
-            Scroll.TotalRow = await QueryData.CountAsync();
-            // Skip Take
-            QueryData = QueryData.Skip(Scroll.Skip ?? 0).Take(Scroll.Take ?? 50);
+            Scroll.TotalRow = await this.repository.GetLengthWithAsync(predicate: predicate);
 
+            var mapDatas = new List<BranchViewModel>();
+            foreach (var item in QueryData)
+            {
+                var MapItem = this.mapper.Map<Branch, BranchViewModel>(item);
+                mapDatas.Add(MapItem);
+            }
 
-            var listData = new List<BranchViewModel>();
-            foreach (var item in await QueryData.ToListAsync())
-                listData.Add(this.mapper.Map<Branch, BranchViewModel>(item));
-
-            return new JsonResult(new ScrollDataViewModel<Branch>(Scroll, listData), this.DefaultJsonSettings);
+            return new JsonResult(new ScrollDataViewModel<BranchViewModel>(Scroll, mapDatas), this.DefaultJsonSettings);
         }
     }
 }

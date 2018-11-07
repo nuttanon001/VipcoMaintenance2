@@ -38,6 +38,8 @@ import {
   RadioButtonModule,
   CheckboxModule,
 } from "primeng/primeng";
+
+import { TableModule } from 'primeng/table';
 // chart
 //import { ChartsModule } from "ng2-charts/ng2-charts";
 
@@ -104,6 +106,7 @@ import { AttachFileViewComponent } from '../attach-file-view/attach-file-view.co
     AutoCompleteModule,
     RadioButtonModule,
     CheckboxModule,
+    TableModule,
     // chart
     //ChartsModule
     //Angular
@@ -147,6 +150,7 @@ import { AttachFileViewComponent } from '../attach-file-view/attach-file-view.co
     AutoCompleteModule,
     RadioButtonModule,
     CheckboxModule,
+    TableModule,
     // component
     SearchBoxComponent,
     AttachFileComponent,

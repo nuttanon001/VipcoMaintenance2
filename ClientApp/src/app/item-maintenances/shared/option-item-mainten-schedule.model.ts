@@ -30,6 +30,7 @@ export interface OptionItemMaintenSchedule {
   /// TypeMaintenanceId
   /// </summary>
   TypeMaintenanceId?: number;
+  ItemTypeId?: number;
   /// <summary>
   /// Start date
   /// </summary>
